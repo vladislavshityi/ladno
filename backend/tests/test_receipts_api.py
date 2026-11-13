@@ -1,6 +1,7 @@
 import base64
 import io
 import json
+import re
 from datetime import date
 from decimal import Decimal
 
@@ -276,13 +277,18 @@ PARSED = {
          "volume": "40.00", "tariff": "32.50", "accrued": "1300.00", "method": "norm"},
     ],
     "total": "1567.18",
+    "rows_text": [
+        "Холодное водоснабжение м3 5,000 53,4360 267,18",
+        "Содержание м2 40,00 32,50 1 300,00",
+    ],
+    "total_text": "Итого 1 567,18",
 }  # fmt: skip
 
 
 async def test_upload_parses_with_llm_and_masks_account(
     client: httpx.AsyncClient, anna: Account, llm: FakeLLM
 ):
-    llm.replies = [json.dumps(PARSED, ensure_ascii=False), "[]"]
+    llm.replies = ["0", json.dumps(PARSED, ensure_ascii=False), "[]"]
     response = await client.post(
         "/receipts", files={"file": ("r.png", PNG, "image/png")}, headers=anna.headers
     )
@@ -291,24 +297,24 @@ async def test_upload_parses_with_llm_and_masks_account(
     assert receipt["account_last4"] == "7890" and receipt["status"] == "parsed"
     assert receipt["total"] == "1567.18" and receipt["management_company"]["name"] == "УК Тест"
     assert all(x["explanation"] for x in receipt["lines"])  # без ответа модели — шаблоны
-    image = llm.calls[0][1]["content"][1]
+    image = llm.calls[1][1]["content"][1]
     assert image["image_url"]["url"].startswith("data:image/png;base64,")
-    assert "7890" not in json.dumps(llm.calls[1], ensure_ascii=False)
+    assert "7890" not in json.dumps(llm.calls[2], ensure_ascii=False)
 
 
 async def test_upload_pdf_uses_file_part(client: httpx.AsyncClient, anna: Account, llm: FakeLLM):
-    llm.replies = [json.dumps(PARSED, ensure_ascii=False), "[]"]
+    llm.replies = ["0", json.dumps(PARSED, ensure_ascii=False), "[]"]
     response = await client.post(
         "/receipts", files={"file": ("r.pdf", PDF, "application/pdf")}, headers=anna.headers
     )
     assert response.status_code == 201
-    assert llm.calls[0][1]["content"][1]["type"] == "file"
+    assert llm.calls[0][1]["content"][1]["type"] == "file"  # у PDF нет запроса ориентации
 
 
 async def test_upload_unparsable_llm_answer_is_502(
     client: httpx.AsyncClient, anna: Account, llm: FakeLLM
 ):
-    llm.replies = ["это не JSON"]
+    llm.replies = ["0", "это не JSON"]
     response = await client.post(
         "/receipts", files={"file": ("r.png", PNG, "image/png")}, headers=anna.headers
     )
@@ -318,7 +324,7 @@ async def test_upload_unparsable_llm_answer_is_502(
 async def test_line_explanation_from_llm_must_not_invent_numbers(
     client: httpx.AsyncClient, anna: Account, llm: FakeLLM
 ):
-    llm.replies = [json.dumps(PARSED, ensure_ascii=False), "[]"]
+    llm.replies = ["0", json.dumps(PARSED, ensure_ascii=False), "[]"]
     first = (
         await client.post(
             "/receipts", files={"file": ("r.png", PNG, "image/png")}, headers=anna.headers
@@ -346,7 +352,15 @@ def line(name: str, accrued: str) -> dict:
 
 
 def answer(lines: list, rows_count: int, total: str) -> str:
-    parsed = {**PARSED, "rows_count": rows_count, "lines": lines, "total": total}
+    rows_text = [f"{x['service_name']} {x['accrued']}" for x in lines if "service_name" in x]
+    parsed = {
+        **PARSED,
+        "rows_count": rows_count,
+        "lines": lines,
+        "total": total,
+        "rows_text": rows_text,
+        "total_text": f"Итого {total}",
+    }
     return json.dumps(parsed, ensure_ascii=False)
 
 
@@ -361,11 +375,11 @@ async def upload_png(client: httpx.AsyncClient, who: Account, data: bytes = PNG)
 async def test_upload_converging_answer_costs_one_model_call(
     client: httpx.AsyncClient, anna: Account, llm: FakeLLM
 ):
-    llm.replies = [answer([line("А", "100.00"), line("Б", "50.00")], 2, "150.00"), "[]"]
+    llm.replies = ["0", answer([line("А", "100.00"), line("Б", "50.00")], 2, "150.00"), "[]"]
     receipt = await upload_png(client, anna)
     assert receipt["status"] == "parsed" and receipt["warnings"] == []
-    assert len(llm.calls) == 2  # разбор и объяснения строк; повторного разбора нет
-    assert "rows_count" in llm.calls[0][0]["content"]
+    assert len(llm.calls) == 3  # ориентация, разбор и объяснения строк; повтора нет
+    assert "rows_count" in llm.calls[1][0]["content"]
 
 
 async def test_upload_missing_rows_trigger_one_correcting_pass(
@@ -373,13 +387,13 @@ async def test_upload_missing_rows_trigger_one_correcting_pass(
 ):
     first = answer([line("А", "100.00")], 3, "150.00")
     fixed = answer([line("А", "100.00"), line("Б", "50.00"), line("В", "0.00")], 3, "150.00")
-    llm.replies = [first, fixed, "[]"]
+    llm.replies = ["0", first, fixed, "[]"]
     receipt = await upload_png(client, anna)
     assert len(receipt["lines"]) == 3 and receipt["warnings"] == []
-    followup = llm.calls[1][-1]["content"]
+    followup = llm.calls[2][-1]["content"]
     assert first in followup and "строк 1, а в таблице 3" in followup
     assert "сумма строк 100.00, итог 150.00" in followup
-    assert llm.calls[1][1] == llm.calls[0][1]  # та же картинка
+    assert llm.calls[2][1] == llm.calls[1][1]  # та же картинка
 
 
 async def test_upload_not_converging_keeps_best_with_warning(
@@ -387,18 +401,18 @@ async def test_upload_not_converging_keeps_best_with_warning(
 ):
     worse = answer([line("А", "100.00")], 4, "500.00")
     better = answer([line("А", "100.00"), line("Б", "300.00")], 4, "500.00")
-    llm.replies = [worse, better, "[]"]
+    llm.replies = ["0", worse, better, "[]"]
     receipt = await upload_png(client, anna)
     assert len(receipt["lines"]) == 2 and receipt["status"] == "needs_review"
     assert any("Распознано строк: 2, в таблице их 4" in w for w in receipt["warnings"])
-    assert len(llm.calls) == 3  # два разбора и объяснения: больше двух запросов на разбор нет
+    assert len(llm.calls) == 4  # ориентация, два разбора и объяснения: разборов не больше двух
 
 
 async def test_upload_drops_broken_line_with_warning(
     client: httpx.AsyncClient, anna: Account, llm: FakeLLM
 ):
     broken = {"service_name": "Мусор", "accrued": "не число"}
-    llm.replies = [answer([line("А", "100.00"), broken], 2, "100.00"), "[]"]
+    llm.replies = ["0", answer([line("А", "100.00"), broken], 2, "100.00"), "[]"]
     receipt = await upload_png(client, anna)
     assert [x["service_name"] for x in receipt["lines"]] == ["А"]
     assert "Не удалось прочитать строку: Мусор" in receipt["warnings"]
@@ -410,9 +424,9 @@ async def test_upload_sends_detail_high_and_shrinks_big_image(
 ):
     big = io.BytesIO()
     Image.new("RGB", (4000, 3000), "white").save(big, format="PNG")
-    llm.replies = [answer([line("А", "100.00")], 1, "100.00"), "[]"]
+    llm.replies = ["0", answer([line("А", "100.00")], 1, "100.00"), "[]"]
     await upload_png(client, anna, big.getvalue())
-    image = llm.calls[0][1]["content"][1]["image_url"]
+    image = llm.calls[1][1]["content"][1]["image_url"]
     assert image["detail"] == "high" and image["url"].startswith("data:image/jpeg;base64,")
     sent = Image.open(io.BytesIO(base64.b64decode(image["url"].split(",", 1)[1])))
     assert max(sent.size) == 2048
@@ -425,11 +439,11 @@ async def test_upload_uses_vision_model_from_settings(
     monkeypatch.setenv("LLM_VISION_MODEL", "gpt-4o")
     get_settings.cache_clear()
     try:
-        llm.replies = [answer([line("А", "100.00")], 1, "100.00"), "[]"]
+        llm.replies = ["0", answer([line("А", "100.00")], 1, "100.00"), "[]"]
         await upload_png(client, anna)
     finally:
         get_settings.cache_clear()
-    assert llm.models[0] == "gpt-4o"
+    assert llm.models[:2] == ["gpt-4o", "gpt-4o"]
 
 
 async def test_implausible_period_is_dropped_with_warning(
@@ -437,12 +451,12 @@ async def test_implausible_period_is_dropped_with_warning(
 ):
     for period in ("2016-08", "2999-01"):
         parsed = {**PARSED, "period": period}
-        llm.replies = [json.dumps(parsed, ensure_ascii=False), "[]"]
+        llm.replies = ["0", json.dumps(parsed, ensure_ascii=False), "[]"]
         receipt = await upload_png(client, anna)
         assert receipt["period"] is None and receipt["status"] == "needs_review"
         assert "Не удалось уверенно прочитать период — укажите его." in receipt["warnings"]
     today = date.today().isoformat()
-    assert today in llm.calls[0][0]["content"]  # модель знает текущую дату
+    assert today in llm.calls[1][0]["content"]  # модель знает текущую дату
 
 
 async def test_receipts_list_is_newest_upload_first(client: httpx.AsyncClient, anna: Account):
@@ -457,7 +471,113 @@ async def test_upload_ignores_summary_row_returned_as_service(
     client: httpx.AsyncClient, anna: Account, llm: FakeLLM
 ):
     lines = [line("А", "100.00"), line("Б", "300.00"), line("Итого к оплате", "400.00")]
-    llm.replies = [answer(lines, 2, "400.00"), "[]"]
+    llm.replies = ["0", answer(lines, 2, "400.00"), "[]"]
     receipt = await upload_png(client, anna)
     assert [x["service_name"] for x in receipt["lines"]] == ["А", "Б"]
-    assert receipt["status"] == "parsed" and len(llm.calls) == 2
+    assert receipt["status"] == "parsed" and len(llm.calls) == 3
+
+
+def grounded(lines: list, rows_text: list[str], total: str, **extra) -> str:
+    parsed = {
+        **PARSED,
+        "lines": lines,
+        "rows_text": rows_text,
+        "total": total,
+        "total_text": f"Итого {total}",
+        **extra,
+    }
+    return json.dumps(parsed, ensure_ascii=False)
+
+
+def test_prompt_has_no_example_numbers():
+    from app.modules.receipts.parsing import _PROMPT
+
+    assert not re.search(r"\d+[.,]\d+", _PROMPT)
+
+
+async def test_unreadable_photo_gives_empty_receipt_for_review(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    unreadable = json.dumps({"readable": False, "lines": [], "rows_text": []})
+    llm.replies = ["0", unreadable, "[]"]
+    receipt = await upload_png(client, anna)
+    assert receipt["lines"] == [] and receipt["status"] == "needs_review"
+    assert any("Не удалось прочитать квитанцию" in w for w in receipt["warnings"])
+    assert len(llm.calls) == 2  # повторного разбора нет
+
+
+async def test_line_missing_from_transcription_is_dropped(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    lines = [line("А", "100.00"), line("Выдумка", "777.77")]
+    llm.replies = ["0", grounded(lines, ["А 100,00"], "100.00", rows_count=2), "[]"]
+    receipt = await upload_png(client, anna)
+    assert [x["service_name"] for x in receipt["lines"]] == ["А"]
+    assert "Строка не найдена в тексте квитанции: Выдумка" in receipt["warnings"]
+
+
+async def test_mostly_unconfirmed_lines_need_review(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    lines = [line("А", "100.00"), line("Б", "200.00"), line("В", "300.00")]
+    reply = grounded(lines, ["А 100,00"], "600.00")
+    llm.replies = ["0", reply, reply, "[]"]  # второй разбор тот же
+    receipt = await upload_png(client, anna)
+    assert receipt["status"] == "needs_review"
+    assert any("Не удалось надёжно прочитать" in w for w in receipt["warnings"])
+
+
+async def test_total_missing_from_total_text_needs_review(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    reply = grounded([line("А", "100.00")], ["А 100,00"], "100.00", total_text="Итого 999,99")
+    llm.replies = ["0", reply, "[]"]
+    receipt = await upload_png(client, anna)
+    assert receipt["status"] == "needs_review"
+    assert any("Не удалось надёжно прочитать" in w for w in receipt["warnings"])
+
+
+async def test_amount_due_differs_from_total_without_breaking_sum_check(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    reply = grounded(
+        [line("А", "100.00"), line("Б", "50.00")],
+        ["А 100,00", "Б 50,00"],
+        "150.00",
+        rows_count=2,
+        amount_due="-1366.16",
+    )
+    llm.replies = ["0", reply, "[]"]
+    receipt = await upload_png(client, anna)
+    assert receipt["total"] == "150.00" and len(llm.calls) == 3
+    assert receipt["warnings"] == ["К оплате с учётом долга или аванса: -1366.16 ₽."]
+
+
+async def test_multiple_documents_warning(client: httpx.AsyncClient, anna: Account, llm: FakeLLM):
+    reply = grounded([line("А", "100.00")], ["А 100,00"], "100.00", multiple_documents=True)
+    llm.replies = ["0", reply, "[]"]
+    receipt = await upload_png(client, anna)
+    assert "На фото несколько квитанций, разобрана одна." in receipt["warnings"]
+
+
+async def test_rotated_photo_is_turned_before_parsing(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    wide = io.BytesIO()
+    Image.new("RGB", (400, 200), "white").save(wide, format="PNG")
+    llm.replies = ["90", answer([line("А", "100.00")], 1, "100.00"), "[]"]
+    await upload_png(client, anna, wide.getvalue())
+    assert llm.calls[0][0]["content"][1]["image_url"]["detail"] == "low"
+    sent = llm.calls[1][1]["content"][1]["image_url"]["url"]
+    assert Image.open(io.BytesIO(base64.b64decode(sent.split(",", 1)[1]))).size == (200, 400)
+
+
+async def test_non_numeric_orientation_answer_does_not_rotate(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    wide = io.BytesIO()
+    Image.new("RGB", (400, 200), "white").save(wide, format="PNG")
+    llm.replies = ["Текст повёрнут", answer([line("А", "100.00")], 1, "100.00"), "[]"]
+    await upload_png(client, anna, wide.getvalue())
+    sent = llm.calls[1][1]["content"][1]["image_url"]["url"]
+    assert Image.open(io.BytesIO(base64.b64decode(sent.split(",", 1)[1]))).size == (400, 200)
