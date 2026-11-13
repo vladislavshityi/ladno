@@ -17,6 +17,7 @@ from app.modules.houses.router import router as houses_router
 from app.modules.issues.photos import router as photos_router
 from app.modules.issues.router import router as issues_router
 from app.modules.receipts.router import router as receipts_router
+from app.modules.submissions.router import router as submissions_router
 from app.modules.users.router import router as users_router
 
 DESCRIPTION = (
@@ -63,6 +64,7 @@ def create_app() -> FastAPI:
         users_router,
         houses_router,
         issues_router,
+        submissions_router,
         photos_router,
         receipts_router,
         assistant_router,

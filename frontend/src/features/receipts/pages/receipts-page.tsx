@@ -15,6 +15,9 @@ export default function ReceiptsPage() {
   return (
     <div className="mx-auto grid max-w-2xl gap-6">
       <PageHeader title="Квитанции" description="Объясним начисления, сравним месяцы и проверим, не переплачиваете ли вы" />
+      <p className="rounded-2xl bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
+        Положите квитанцию на стол, снимите сверху со вспышкой, чтобы вся квитанция была в кадре.
+      </p>
       <UploadZone pending={upload.isPending} onFile={(file) => upload.mutate(file, { onSuccess: (r) => open(r.id) })} />
       <SamplePicker onLoaded={open} />
       {isLoading && <Skeleton className="h-20 rounded-2xl" />}

@@ -7,12 +7,15 @@ import { FormField } from '@/components/form-field'
 import { Skeleton } from '@/components/ui/skeleton'
 import { openExternal } from '@/lib/telegram'
 import type { Issue } from '@/types/models'
-import { usePatchIssue, useSubmission } from '../hooks'
+import { useChannels, usePatchIssue, useSubmission } from '../hooks'
+import { SubmitEmail } from './submit-email'
 
 /** Draft stage: open the submission form, then record that the complaint was sent. */
 export function SubmitPanel({ issue }: { issue: Issue }) {
   const { data: submission } = useSubmission(issue.id, true)
+  const { data: channels } = useChannels(issue.id)
   const patch = usePatchIssue(issue.id)
+  const email = channels?.find((c) => c.name === 'email')
   const [ref, setRef] = useState('')
 
   return (
@@ -22,6 +25,7 @@ export function SubmitPanel({ issue }: { issue: Issue }) {
         <CardDescription>Мы подали бы его сами, но платформа принимает обращения только от вас.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-5">
+        {email && <SubmitEmail issue={issue} channel={email} />}
         {submission ? (
           <>
             <ol className="grid gap-2 text-sm">

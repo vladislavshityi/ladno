@@ -62,9 +62,24 @@ cd backend  && uv sync && uv run ruff check && uv run pytest
 cd frontend && npm ci && npm run lint && npm run typecheck && npm test
 cd bot      && uv sync && uv run ruff check && uv run pytest
 ```
-
-Локальная модель: `docker compose --profile ollama up -d`, затем `LLM_PROVIDER=ollama`.
 </details>
+
+## Модели
+
+| Режим | Настройка |
+|---|---|
+| **API** | `LLM_PROVIDER=openai`, `LLM_BASE_URL`, `LLM_API_KEY`; `LLM_MODEL` для текста, `LLM_VISION_MODEL` для фото (рекомендуем `gpt-4o`) |
+| **Ollama** | `LLM_PROVIDER=ollama`, `OLLAMA_MODEL` для текста, `OLLAMA_VISION_MODEL` для фото, например `qwen2.5vl:3b`; нужно от 8 ГБ памяти |
+
+Локальная модель запускается профилем и скачивается один раз:
+
+```bash
+docker compose --profile ollama up -d
+docker compose exec ollama ollama pull qwen2.5:3b
+docker compose exec ollama ollama pull qwen2.5vl:3b
+```
+
+На сервере (2 vCPU, 4 ГБ) работает режим API. Без модели сервис отвечает по шаблонам.
 
 ## Безопасность и персональные данные
 
@@ -100,5 +115,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
 Caddy сам получает сертификат для `DOMAIN`. В @BotFather выполните `/setdomain`. Push в `main` после зелёного CI публикует образы в GHCR и обновляет сервер по SSH; для этого нужны секреты `DEPLOY_HOST`, `DEPLOY_USER` и `DEPLOY_SSH_KEY`.
+
+Отправка обращений по email: заполните `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` (`starttls`, `ssl` или `none`). Письмо с PDF и фото уходит на почту адресата из справочника или карточки УК, копия и `Reply-To` ведут на email жителя из профиля; не больше трёх отправок на обращение. Без `SMTP_HOST` кнопка не показывается.
 
 Резервная копия: `docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > ladno.sql.gz`. Ключ `PII_ENCRYPTION_KEY` храните отдельно: без него зашифрованные поля не восстановить.

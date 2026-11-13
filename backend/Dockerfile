@@ -8,6 +8,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY alembic.ini ./
 COPY alembic ./alembic
+COPY assets ./assets
 COPY data ./data
 COPY templates ./templates
 COPY src ./src

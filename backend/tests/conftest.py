@@ -16,6 +16,7 @@ os.environ.update(
         "LLM_BASE_URL": "",
         "LLM_API_KEY": "",
         "LLM_MODEL": "",
+        "LLM_VISION_MODEL": "",
         "TELEGRAM_BOT_TOKEN": "123456:TEST-TOKEN",
         "TELEGRAM_BOT_USERNAME": "",
         "BOT_API_TOKEN": "test-bot-token",

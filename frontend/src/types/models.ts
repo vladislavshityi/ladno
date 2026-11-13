@@ -23,6 +23,8 @@ export type IssuePatch = S['IssuePatch']
 export type IssueStatus = S['IssueStatus']
 export type Submission = S['Submission']
 export type Photo = S['PhotoRead']
+export type SendChannel = S['ChannelRead']
+export type SendResponse = S['SendResponse']
 
 export type Receipt = S['Receipt']
 export type ReceiptShort = S['ReceiptShort']

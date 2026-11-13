@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { qk } from '@/lib/query-keys'
-import type { Issue, IssuePatch, RouteRequest } from '@/types/models'
+import type { Issue, IssuePatch, RouteRequest, SendChannel } from '@/types/models'
 import { issuesApi } from './api'
 
 export const useCategories = () => useQuery({ queryKey: qk.categories, queryFn: issuesApi.categories, staleTime: Infinity })
@@ -21,6 +21,8 @@ export const useIssue = (id: string) => useQuery({ queryKey: qk.issue(id), query
 
 export const useSubmission = (id: string, enabled: boolean) =>
   useQuery({ queryKey: qk.submission(id), queryFn: () => issuesApi.submission(id), enabled })
+
+export const useChannels = (id: string) => useQuery({ queryKey: qk.channels(id), queryFn: () => issuesApi.channels(id) })
 
 /** Keeps the list and the single-issue caches in sync after any issue write. */
 function useIssueWrite<V>(fn: (vars: V) => Promise<Issue>) {
@@ -50,4 +52,17 @@ export function useAuthedImage(url: string) {
     staleTime: Infinity,
   })
   return data
+}
+
+/** Sends the letter through an automatic channel; the issue becomes submitted, so its caches are refreshed. */
+export function useSendIssue(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (channel: SendChannel['name']) => issuesApi.send(id, channel),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.issue(id) })
+      void qc.invalidateQueries({ queryKey: qk.issues, exact: true })
+    },
+    // 429 (limit) and 502 (SMTP failure) carry a readable message; the global handler shows it.
+  })
 }

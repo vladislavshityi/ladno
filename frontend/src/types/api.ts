@@ -381,6 +381,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/issues/{issue_id}/letter.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Letter Pdf
+         * @description Письмо в PDF: полный текст и фото обращения, каждое на своей странице.
+         */
+        get: operations["get_letter_pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/issues/{issue_id}/escalate": {
         parameters: {
             query?: never;
@@ -395,6 +415,46 @@ export interface paths {
          * @description Новое обращение на следующую ступень, если проблема не решена.
          */
         post: operations["escalate_issue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/issues/{issue_id}/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Channels
+         * @description Способы подать обращение: всегда «сам», по email — если настроена почта и есть адрес.
+         */
+        get: operations["list_channels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/issues/{issue_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Issue
+         * @description Отправляет письмо с PDF и фото адресату; обращение становится поданным.
+         */
+        post: operations["send_issue"];
         delete?: never;
         options?: never;
         head?: never;
@@ -823,6 +883,20 @@ export interface components {
             value: string;
             /** Label */
             label: string;
+        };
+        /** ChannelRead */
+        ChannelRead: {
+            /**
+             * Name
+             * @enum {string}
+             */
+            name: "manual" | "email";
+            /** Label */
+            label: string;
+            /** Automatic */
+            automatic: boolean;
+            /** Recipient */
+            recipient: string | null;
         };
         /** ChatMessage */
         ChatMessage: {
@@ -1536,6 +1610,26 @@ export interface components {
             escalation: components["schemas"]["EscalationStep"][];
             /** @description Если адресат — УК и есть квитанция: услуга, по которой просят перерасчёт */
             recalculation_hint: components["schemas"]["RecalculationHint"] | null;
+        };
+        /** SendRequest */
+        SendRequest: {
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "manual" | "email";
+        };
+        /** SendResponse */
+        SendResponse: {
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "manual" | "email";
+            /** External Ref */
+            external_ref: string | null;
+            /** Message */
+            message: string;
         };
         /** Submission */
         Submission: {
@@ -2772,6 +2866,53 @@ export interface operations {
             };
         };
     };
+    get_letter_pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     escalate_issue: {
         parameters: {
             query?: never;
@@ -2790,6 +2931,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IssueRead"];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_channels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelRead"][];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    send_issue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendResponse"];
                 };
             };
             /** @description Нужен вход */

@@ -1,11 +1,11 @@
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
 from app.core.deps import ConsentedUser, CurrentUser, LLMDep, SessionDep
 from app.core.rate_limit import LLMRateLimit
 from app.core.region import get_region
-from app.modules.issues import classification, photos, routing, service
+from app.modules.issues import classification, letter_pdf, photos, routing, service
 from app.modules.issues.schemas import (
     Category,
     Classification,
@@ -94,6 +94,15 @@ async def refresh_letter(
 async def get_submission(issue_id: uuid.UUID, user: CurrentUser, session: SessionDep) -> Submission:
     """Всё для подачи вручную через «Решаем вместе»: текст, шаги, альтернативные каналы."""
     return build_submission(await service.get_issue(session, user.id, issue_id))
+
+
+@router.get("/issues/{issue_id}/letter.pdf", response_class=Response)
+async def get_letter_pdf(issue_id: uuid.UUID, user: CurrentUser, session: SessionDep) -> Response:
+    """Письмо в PDF: полный текст и фото обращения, каждое на своей странице."""
+    issue = await service.get_issue(session, user.id, issue_id)
+    pdf = await letter_pdf.render_letter_pdf(issue, await letter_pdf.load_photos(session, issue))
+    headers = {"Content-Disposition": 'attachment; filename="letter.pdf"'}
+    return Response(pdf, media_type="application/pdf", headers=headers)
 
 
 @router.post("/issues/{issue_id}/escalate", response_model=IssueRead, status_code=201)

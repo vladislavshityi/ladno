@@ -44,11 +44,21 @@ class Settings(BaseSettings):
     data_dir: Path = BACKEND_DIR / "data"
     templates_dir: Path = BACKEND_DIR / "templates"
     upload_dir: Path = BACKEND_DIR / "uploads"
+    fonts_dir: Path = BACKEND_DIR / "assets" / "fonts"
 
     pos_url: str = "https://pos.gosuslugi.ru/"
     pos_text_limit: int = 1000
     gis_zhkh_url: str = "https://dom.gosuslugi.ru/"
     consent_version: str = "2026-11"
+
+    # Отправка обращений по email: без smtp_host канал недоступен.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_tls: Literal["starttls", "ssl", "none"] = "starttls"
+    email_sends_per_issue: int = 3
 
     @model_validator(mode="after")
     def _require_real_secrets_in_prod(self) -> Self:

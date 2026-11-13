@@ -61,7 +61,10 @@ export function DescribeStep({ data, setData, onNext }: StepProps) {
         />
       </FormField>
       <div className="grid gap-2">
-        <p className="text-sm font-medium">Фото (до {MAX_PHOTOS})</p>
+        <p className="text-sm font-medium">Фото</p>
+        <p className="text-sm text-muted-foreground">
+          Фото помогут определить проблему и станут доказательством для УК и жилинспекции. По желанию, до {MAX_PHOTOS} шт.
+        </p>
         <PhotoPicker
           photos={data.photos}
           max={MAX_PHOTOS}

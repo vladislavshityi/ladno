@@ -4,6 +4,7 @@ import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
+import { DownloadButtons } from '../components/download-buttons'
 import { IssueActions } from '../components/issue-actions'
 import { IssueHeader } from '../components/issue-header'
 import { IssuePhotos } from '../components/issue-photos'
@@ -61,6 +62,7 @@ export default function IssuePage() {
       />
       <LetterCard title="Полное письмо" hint="Для e-mail или бумажного обращения" text={issue.draft.full} />
       <IssuePhotos photos={issue.photos} />
+      <DownloadButtons issue={issue} />
       <RoutePanel route={issue.route} />
     </div>
   )

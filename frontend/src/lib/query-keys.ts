@@ -10,6 +10,7 @@ export const qk = {
   issues: ['issues'] as const,
   issue: (id: string) => ['issues', id] as const,
   submission: (id: string) => ['issues', id, 'submission'] as const,
+  channels: (id: string) => ['issues', id, 'channels'] as const,
   receipts: ['receipts'] as const,
   receipt: (id: string) => ['receipts', id] as const,
   samples: ['receipts', 'samples'] as const,

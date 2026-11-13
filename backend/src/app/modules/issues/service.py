@@ -140,7 +140,7 @@ async def create_issue(
     return issue
 
 
-def _mark_submitted(issue: Issue, submitted_at: datetime | None) -> None:
+def mark_submitted(issue: Issue, submitted_at: datetime | None) -> None:
     issue.status = IssueStatus.SUBMITTED
     issue.submitted_at = submitted_at or utcnow()
     deadline = RouteResult.model_validate(issue.route).response_deadline
@@ -158,7 +158,7 @@ async def patch_issue(
     if "external_ref" in patch.model_fields_set:
         issue.external_ref = patch.external_ref
     if patch.status == IssueStatus.SUBMITTED and issue.status != IssueStatus.SUBMITTED:
-        _mark_submitted(issue, patch.submitted_at)
+        mark_submitted(issue, patch.submitted_at)
     elif patch.status is not None:
         issue.status = patch.status
     await session.commit()
