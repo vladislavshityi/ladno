@@ -39,7 +39,7 @@ export default function IssuesPage() {
       />
       {issues && issues.length > 0 && (
         <Tabs value={filter} onValueChange={setFilter}>
-          <TabsList className="w-full justify-start overflow-x-auto sm:w-fit">
+          <TabsList className="no-scrollbar w-full justify-start overflow-x-auto sm:w-fit">
             {FILTERS.map((f) => (
               <TabsTrigger key={f.id} value={f.id} className="flex-none">
                 {f.label}

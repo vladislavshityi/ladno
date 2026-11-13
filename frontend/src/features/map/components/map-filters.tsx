@@ -22,7 +22,7 @@ export function MapFiltersBar({ filters, onChange }: Props) {
   const { data: categories } = useCategories()
   const current = categories?.find((c) => c.id === filters.category)
   return (
-    <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+    <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <FilterChip active={Boolean(current)}>

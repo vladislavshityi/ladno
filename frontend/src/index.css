@@ -187,3 +187,11 @@
 @media (prefers-reduced-motion: reduce) {
   .logo-draw { animation: none; }
 }
+
+/* Horizontal chip rows scroll by swipe on phones without showing a scrollbar. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
