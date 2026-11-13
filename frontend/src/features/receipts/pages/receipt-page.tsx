@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, SearchX } from 'lucide-react'
+import { ArrowLeft, SearchX, Sparkles } from 'lucide-react'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -34,6 +34,11 @@ export default function ReceiptPage() {
       <Button asChild variant="ghost" size="sm" className="-ml-2 justify-self-start">
         <Link to="/receipts">
           <ArrowLeft /> Все квитанции
+        </Link>
+      </Button>
+      <Button asChild variant="outline" size="sm" className="justify-self-start rounded-full">
+        <Link to={`/assistant?receipt=${receipt.id}`}>
+          <Sparkles /> Спросить ассистента
         </Link>
       </Button>
       <ReceiptSummary receipt={receipt} />

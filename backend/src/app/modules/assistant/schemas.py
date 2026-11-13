@@ -1,3 +1,4 @@
+import uuid
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -11,4 +12,14 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(
         min_length=1, max_length=20, description="История диалога; последнее сообщение от жителя"
+    )
+    issue_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        max_length=5,
+        description="Обращения для контекста; не передано — последние, пустой список — никаких",
+    )
+    receipt_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        max_length=3,
+        description="Квитанции для контекста; не передано — последние две, пустой список — никаких",
     )

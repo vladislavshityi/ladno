@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError } from '@/lib/api-client'
 import type { ChatMessage } from '@/types/models'
-import { assistantApi } from './api'
+import { assistantApi, type ChatContext } from './api'
 
 const UNAVAILABLE = 'Ассистент сейчас недоступен. Попробуйте позже — остальные разделы работают как обычно.'
 
 /** Chat state for one visit; the server keeps no history, so the full dialog is sent every time. */
-export function useChat() {
+export function useChat(context: ChatContext) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [streaming, setStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -22,7 +22,7 @@ export function useChat() {
       setError(null)
       abort.current = new AbortController()
       try {
-        for await (const delta of assistantApi.chat(history, abort.current.signal)) {
+        for await (const delta of assistantApi.chat(history, context, abort.current.signal)) {
           setMessages((m) => m.map((msg, i) => (i === m.length - 1 ? { ...msg, content: msg.content + delta } : msg)))
         }
       } catch (err) {
@@ -34,7 +34,7 @@ export function useChat() {
         setStreaming(false)
       }
     },
-    [messages],
+    [messages, context],
   )
 
   return { messages, streaming, error, send }

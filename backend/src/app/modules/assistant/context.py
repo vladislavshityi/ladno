@@ -1,5 +1,6 @@
 """Контекст ассистента: справочник региона и данные самого пользователя. Без ФИО и контактов."""
 
+import uuid
 from typing import Any
 
 from sqlalchemy import select
@@ -8,9 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.region import Region, get_region
 from app.modules.issues.models import Issue
 from app.modules.issues.schemas import RouteResult
+from app.modules.issues.service import get_issue
 from app.modules.receipts import diff
 from app.modules.receipts.models import Receipt
-from app.modules.receipts.service import receipt_data
+from app.modules.receipts.service import get_owned, receipt_data
 from app.modules.users.models import User
 
 MAX_ISSUES = 10
@@ -82,30 +84,58 @@ def _changes_text(newer: Receipt, older: Receipt) -> str:
     return "\n".join([head, *lines])
 
 
-async def user_facts(session: AsyncSession, user: User) -> str:
-    stmt = select(Issue).where(Issue.user_id == user.id).order_by(Issue.created_at.desc())
-    issues = (await session.scalars(stmt.limit(MAX_ISSUES))).all()
-    receipts = (
-        await session.scalars(
+async def _pick_issues(
+    session: AsyncSession, user: User, issue_ids: list[uuid.UUID] | None
+) -> list[Issue]:
+    """Выбранные обращения (чужой id даёт 404) или, без выбора, последние."""
+    if issue_ids is None:
+        stmt = select(Issue).where(Issue.user_id == user.id).order_by(Issue.created_at.desc())
+        return list((await session.scalars(stmt.limit(MAX_ISSUES))).all())
+    return [await get_issue(session, user.id, issue_id) for issue_id in issue_ids]
+
+
+async def _pick_receipts(
+    session: AsyncSession, user: User, receipt_ids: list[uuid.UUID] | None
+) -> list[Receipt]:
+    """Выбранные квитанции (чужой id даёт 404) или, без выбора, последние; свежие первыми."""
+    if receipt_ids is None:
+        stmt = (
             select(Receipt)
             .where(Receipt.user_id == user.id)
             .order_by(Receipt.period.desc().nulls_last(), Receipt.created_at.desc())
             .limit(MAX_RECEIPTS)
         )
-    ).all()
+        return list((await session.scalars(stmt)).all())
+    receipts = [await get_owned(session, user.id, receipt_id) for receipt_id in receipt_ids]
+    return sorted(receipts, key=lambda r: r.period or "", reverse=True)
+
+
+async def user_facts(
+    session: AsyncSession,
+    user: User,
+    issue_ids: list[uuid.UUID] | None = None,
+    receipt_ids: list[uuid.UUID] | None = None,
+) -> str:
+    issues = await _pick_issues(session, user, issue_ids)
+    receipts = await _pick_receipts(session, user, receipt_ids)
     sections = []
     if user.management_company:
         sections.append(f"УК пользователя: {user.management_company.name}")
     if issues:
         sections.append("Обращения пользователя:\n" + "\n".join(_issue_line(i) for i in issues))
     sections += [_receipt_text(r) for r in receipts]
-    if len(receipts) == MAX_RECEIPTS:
-        sections.append(_changes_text(*receipts))
+    if len(receipts) >= 2:
+        sections.append(_changes_text(*receipts[:2]))
     return "\n".join(sections) or "Данных пользователя пока нет."
 
 
-async def build_system_prompt(session: AsyncSession, user: User) -> str:
-    facts = await user_facts(session, user)
+async def build_system_prompt(
+    session: AsyncSession,
+    user: User,
+    issue_ids: list[uuid.UUID] | None = None,
+    receipt_ids: list[uuid.UUID] | None = None,
+) -> str:
+    facts = await user_facts(session, user, issue_ids, receipt_ids)
     return (
         f"{SYSTEM_PROMPT}\n\nСправочник региона:\n{region_facts(get_region())}\n\n"
         f"Данные пользователя:\n{facts}"

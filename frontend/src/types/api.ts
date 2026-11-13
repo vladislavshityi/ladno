@@ -841,6 +841,16 @@ export interface components {
              * @description История диалога; последнее сообщение от жителя
              */
             messages: components["schemas"]["ChatMessage"][];
+            /**
+             * Issue Ids
+             * @description Обращения для контекста; не передано — последние, пустой список — никаких
+             */
+            issue_ids?: string[] | null;
+            /**
+             * Receipt Ids
+             * @description Квитанции для контекста; не передано — последние две, пустой список — никаких
+             */
+            receipt_ids?: string[] | null;
         };
         /** Check */
         Check: {

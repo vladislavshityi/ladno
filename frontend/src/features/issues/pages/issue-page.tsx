@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, SearchX } from 'lucide-react'
+import { ArrowLeft, SearchX, Sparkles } from 'lucide-react'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -38,6 +38,11 @@ export default function IssuePage() {
       <Button asChild variant="ghost" size="sm" className="-ml-2 justify-self-start">
         <Link to="/issues">
           <ArrowLeft /> Все обращения
+        </Link>
+      </Button>
+      <Button asChild variant="outline" size="sm" className="justify-self-start rounded-full">
+        <Link to={`/assistant?issue=${issue.id}`}>
+          <Sparkles /> Спросить ассистента
         </Link>
       </Button>
       <IssueHeader issue={issue} />

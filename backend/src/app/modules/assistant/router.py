@@ -43,6 +43,9 @@ async def chat(
     """
     if llm is None:
         raise ServiceUnavailable("Ассистент сейчас недоступен", "llm_unavailable")
-    system = {"role": "system", "content": await build_system_prompt(session, user)}
+    system = {
+        "role": "system",
+        "content": await build_system_prompt(session, user, data.issue_ids, data.receipt_ids),
+    }
     messages = [system, *(m.model_dump() for m in data.messages)]
     return StreamingResponse(_stream_events(llm, messages), media_type="text/event-stream")
