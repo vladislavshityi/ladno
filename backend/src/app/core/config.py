@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen2.5:3b"
     ollama_vision_model: str = ""
     llm_timeout_seconds: float = 15.0
+    llm_vision_timeout_seconds: float = 90.0
     llm_requests_per_minute: int = 20
 
     # Показывать в интерфейсе, что данные демонстрационные.

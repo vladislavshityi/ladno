@@ -44,3 +44,23 @@ async def test_mark_reminder_sent_posts():
 
     await client_with(handler).mark_reminder_sent(uuid.UUID(ISSUE_ID))
     assert seen == [("POST", f"/api/bot/reminders/{ISSUE_ID}/sent")]
+
+
+async def test_notifications_are_parsed_and_marked_sent():
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.method, request.url.path))
+        if request.method == "GET":
+            item = {"id": ISSUE_ID, "telegram_id": 42, "issue_id": ISSUE_ID, "text": "Привет"}
+            return httpx.Response(200, json=[item])
+        return httpx.Response(204)
+
+    client = client_with(handler)
+    items = await client.notifications()
+    await client.mark_notification_sent(items[0].id)
+    assert items[0].telegram_id == 42 and items[0].text == "Привет"
+    assert seen == [
+        ("GET", "/api/bot/notifications"),
+        ("POST", f"/api/bot/notifications/{ISSUE_ID}/sent"),
+    ]

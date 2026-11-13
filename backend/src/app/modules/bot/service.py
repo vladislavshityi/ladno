@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import utcnow
 from app.core.errors import NotFound
-from app.modules.bot.schemas import BotIssue, Reminder
+from app.modules.bot.models import BotNotification
+from app.modules.bot.schemas import BotIssue, Notification, Reminder
 from app.modules.issues.deadlines import is_overdue
 from app.modules.issues.drafts import category_title
 from app.modules.issues.models import ACTIVE_STATUSES, Issue
@@ -72,4 +73,33 @@ async def mark_reminder_sent(session: AsyncSession, issue_id: uuid.UUID) -> None
     if issue is None:
         raise NotFound("Обращение не найдено")
     issue.reminder_sent_at = utcnow()
+    await session.commit()
+
+
+def add_notification(
+    session: AsyncSession, user_id: uuid.UUID, issue_id: uuid.UUID, text: str
+) -> None:
+    """Ставит сообщение в очередь бота; коммитит вызывающий вместе со своими изменениями."""
+    session.add(BotNotification(user_id=user_id, issue_id=issue_id, text=text))
+
+
+async def pending_notifications(session: AsyncSession) -> list[Notification]:
+    """Неотправленные сообщения. У синтетических жителей telegram_id < 0: им слать некуда."""
+    stmt = (
+        select(BotNotification, User.telegram_id)
+        .join(User, User.id == BotNotification.user_id)
+        .where(BotNotification.sent_at.is_(None), User.telegram_id > 0)
+        .order_by(BotNotification.created_at)
+    )
+    return [
+        Notification(id=n.id, telegram_id=telegram_id, issue_id=n.issue_id, text=n.text)
+        for n, telegram_id in (await session.execute(stmt)).all()
+    ]
+
+
+async def mark_notification_sent(session: AsyncSession, notification_id: uuid.UUID) -> None:
+    notification = await session.get(BotNotification, notification_id)
+    if notification is None:
+        raise NotFound("Сообщение не найдено")
+    notification.sent_at = utcnow()
     await session.commit()

@@ -177,6 +177,9 @@ class IssueRead(ORMModel):
     route: RouteResult
     escalation_level: int = 0
     parent_issue_id: uuid.UUID | None = None
+    collective_id: uuid.UUID | None = Field(
+        None, description="Коллективное обращение, к которому присоединён житель"
+    )
     draft: Draft
     missing_applicant_fields: list[Literal["full_name", "apartment", "phone"]] = Field(
         default_factory=list,

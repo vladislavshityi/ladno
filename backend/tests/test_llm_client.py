@@ -177,3 +177,19 @@ async def test_complete_model_override_and_ollama_ignores_detail():
     await ollama(handler).complete(messages, model="llava")
     assert seen[0]["model"] == "gpt-4o" and seen[1]["model"] == "llava"
     assert seen[1]["messages"][0]["images"] == ["QUJD"]
+
+
+async def test_images_get_longer_timeout_than_text():
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.extensions["timeout"]["read"])
+        return httpx.Response(200, json={"choices": [{"message": {"content": "{}"}}]})
+
+    client = OpenAICompatibleClient(
+        "https://llm.test/v1", "k", "m", 5.0, httpx.MockTransport(handler), vision_timeout=60.0
+    )
+    image = {"type": "image_url", "image_url": {"url": "data:image/png;base64,QUJD"}}
+    await client.complete(MESSAGES)
+    await client.complete([{"role": "user", "content": [image]}])
+    assert seen == [5.0, 60.0]

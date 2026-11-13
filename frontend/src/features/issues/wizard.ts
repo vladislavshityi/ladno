@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { AddressSuggestion, Classification } from '@/types/models'
+import type { CollectiveChoice } from '@/features/collectives/components/similar-banner'
 import type { PickedPhoto } from './components/photo-picker'
 
 export const WIZARD_STEPS = [
@@ -26,6 +27,8 @@ export interface WizardData {
   /** Address typed by the resident when the house is not in the directory. */
   customAddress: string | null
   location: IssueLocation
+  /** Whether to join neighbours' collective complaint; null until the resident chooses. */
+  collective: CollectiveChoice
 }
 
 export interface IssueLocation {
@@ -57,6 +60,7 @@ export const EMPTY_WIZARD: WizardData = {
   house: null,
   customAddress: null,
   location: { entrance: '', floor: '', apartment: '', place: '' },
+  collective: { join: null, consentLetter: false },
 }
 
 export interface StepProps {

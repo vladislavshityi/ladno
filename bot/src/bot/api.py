@@ -23,6 +23,13 @@ class Reminder(BaseModel):
     is_overdue: bool
 
 
+class Notification(BaseModel):
+    id: uuid.UUID
+    telegram_id: int
+    issue_id: uuid.UUID
+    text: str
+
+
 class BackendClient:
     """Служебный API backend: общий секрет в заголовке, пользовательские токены не нужны."""
 
@@ -51,6 +58,15 @@ class BackendClient:
 
     async def mark_reminder_sent(self, issue_id: uuid.UUID) -> None:
         response = await self._http.post(f"/reminders/{issue_id}/sent")
+        response.raise_for_status()
+
+    async def notifications(self) -> list[Notification]:
+        response = await self._http.get("/notifications")
+        response.raise_for_status()
+        return [Notification.model_validate(item) for item in response.json()]
+
+    async def mark_notification_sent(self, notification_id: uuid.UUID) -> None:
+        response = await self._http.post(f"/notifications/{notification_id}/sent")
         response.raise_for_status()
 
     async def close(self) -> None:

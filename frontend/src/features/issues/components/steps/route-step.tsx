@@ -2,6 +2,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { TriangleAlert } from 'lucide-react'
+import { useMe } from '@/features/auth/hooks'
+import { SimilarBanner } from '@/features/collectives/components/similar-banner'
+import { useSimilar } from '@/features/collectives/hooks'
 import { EmergencyAlert } from '../emergency-alert'
 import { RoutePanel } from '../route-panel'
 import { StepLayout } from '../step-layout'
@@ -13,7 +16,8 @@ interface Props extends StepProps {
   creating: boolean
 }
 
-export function RouteStep({ data, onCreate, creating, onBack }: Props) {
+export function RouteStep({ data, setData, onCreate, creating, onBack }: Props) {
+  const { data: me } = useMe()
   const { data: route, isError, refetch } = useRoutePreview({
     category: data.category!,
     answers: data.answers,
@@ -22,6 +26,9 @@ export function RouteStep({ data, onCreate, creating, onBack }: Props) {
     custom_address: data.customAddress,
   })
   const { classification } = data
+  // The profile house applies unless the resident typed an address outside the directory.
+  const houseId = data.house?.house_id ?? (data.customAddress ? null : me?.house?.id)
+  const { data: similar } = useSimilar(houseId, data.category!)
 
   return (
     <StepLayout
@@ -34,6 +41,9 @@ export function RouteStep({ data, onCreate, creating, onBack }: Props) {
       pending={creating}
     >
       {classification?.is_emergency && classification.emergency && <EmergencyAlert emergency={classification.emergency} />}
+      {similar && similar.count > 0 && (
+        <SimilarBanner count={similar.count} choice={data.collective} onChange={(collective) => setData((d) => ({ ...d, collective }))} />
+      )}
       {route ? (
         <RoutePanel route={route} />
       ) : isError ? (

@@ -1,6 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.collectives.models import CollectiveIssue, CollectiveMember
 from app.modules.issues.models import Issue
 from app.modules.ratings import service as ratings
 from app.modules.users.models import User
@@ -46,3 +47,21 @@ async def test_clear_removes_only_demo_data(session: AsyncSession):
     await clear_demo(session)
 
     assert await _counts(session) == (1, 0)
+    assert await session.scalar(select(func.count()).select_from(CollectiveIssue)) == 0
+
+
+async def test_seed_demo_creates_collectives_of_three_to_six_residents(session: AsyncSession):
+    await seed_demo(session)
+
+    sizes = (
+        await session.scalars(
+            select(func.count())
+            .select_from(CollectiveMember)
+            .group_by(CollectiveMember.collective_id)
+        )
+    ).all()
+    assert len(sizes) == 3 and all(3 <= size <= 6 for size in sizes)
+    linked = await session.scalar(
+        select(func.count()).select_from(Issue).where(Issue.collective_id.is_not(None))
+    )
+    assert linked == sum(sizes)

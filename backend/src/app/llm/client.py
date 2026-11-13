@@ -41,6 +41,13 @@ def _unexpected_answer() -> Iterator[None]:
         raise BadGateway("Модель вернула неожиданный ответ", "llm_error") from exc
 
 
+def _has_images(messages: list[Message]) -> bool:
+    return any(
+        isinstance(m["content"], list) and any(p.get("type") == "image_url" for p in m["content"])
+        for m in messages
+    )
+
+
 def _raise_for_status(response: httpx.Response) -> None:
     if response.is_error:
         raise BadGateway(f"Модель вернула ошибку {response.status_code}", "llm_error")
@@ -56,14 +63,20 @@ class OpenAICompatibleClient:
         model: str,
         timeout: float,
         transport: httpx.AsyncBaseTransport | None = None,
+        vision_timeout: float | None = None,
     ) -> None:
         self.model = model
+        self._vision_timeout = httpx.Timeout(vision_timeout or timeout, connect=5.0)
         self._http = {
             "base_url": base_url.rstrip("/"),
             "headers": {"Authorization": f"Bearer {api_key}"},
             "timeout": httpx.Timeout(timeout, connect=5.0),
             "transport": transport,
         }
+
+    def _timeout_for(self, messages: list[Message]) -> httpx.Timeout:
+        """Разбор изображений идёт дольше текста, поэтому ждём его отдельно."""
+        return self._vision_timeout if _has_images(messages) else self._http["timeout"]
 
     def _payload(
         self, messages: list[Message], model: str | None = None, **extra: Any
@@ -77,7 +90,9 @@ class OpenAICompatibleClient:
         with _map_transport_errors():
             async with httpx.AsyncClient(**self._http) as client:
                 response = await client.post(
-                    "/chat/completions", json=self._payload(messages, model, **extra)
+                    "/chat/completions",
+                    json=self._payload(messages, model, **extra),
+                    timeout=self._timeout_for(messages),
                 )
         _raise_for_status(response)
         with _unexpected_answer():
@@ -126,13 +141,19 @@ class OllamaClient:
         model: str,
         timeout: float,
         transport: httpx.AsyncBaseTransport | None = None,
+        vision_timeout: float | None = None,
     ) -> None:
         self.model = model
+        self._vision_timeout = httpx.Timeout(vision_timeout or timeout, connect=5.0)
         self._http = {
             "base_url": base_url.rstrip("/"),
             "timeout": httpx.Timeout(timeout, connect=5.0),
             "transport": transport,
         }
+
+    def _timeout_for(self, messages: list[Message]) -> httpx.Timeout:
+        """Разбор изображений идёт дольше текста, поэтому ждём его отдельно."""
+        return self._vision_timeout if _has_images(messages) else self._http["timeout"]
 
     def _payload(
         self, messages: list[Message], model: str | None = None, **extra: Any
@@ -150,7 +171,9 @@ class OllamaClient:
         payload = self._payload(messages, model, stream=False, **extra)
         with _map_transport_errors():
             async with httpx.AsyncClient(**self._http) as client:
-                response = await client.post("/api/chat", json=payload)
+                response = await client.post(
+                    "/api/chat", json=payload, timeout=self._timeout_for(messages)
+                )
         _raise_for_status(response)
         with _unexpected_answer():
             return response.json().get("message", {}).get("content", "")
@@ -173,10 +196,19 @@ def get_llm() -> LLMClient | None:
     """Клиент по LLM_PROVIDER; None — модель не настроена, и функции с ней деградируют."""
     s = get_settings()
     if s.llm_provider == "ollama":
-        return OllamaClient(s.ollama_base_url, s.ollama_model, s.llm_timeout_seconds)
+        return OllamaClient(
+            s.ollama_base_url,
+            s.ollama_model,
+            s.llm_timeout_seconds,
+            vision_timeout=s.llm_vision_timeout_seconds,
+        )
     if s.llm_provider == "openai" and s.llm_base_url and s.llm_api_key and s.llm_model:
         return OpenAICompatibleClient(
-            s.llm_base_url, s.llm_api_key, s.llm_model, s.llm_timeout_seconds
+            s.llm_base_url,
+            s.llm_api_key,
+            s.llm_model,
+            s.llm_timeout_seconds,
+            vision_timeout=s.llm_vision_timeout_seconds,
         )
     return None
 

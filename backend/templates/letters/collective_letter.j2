@@ -1,0 +1,34 @@
+Кому: {{ addressee_name }}
+От: жителей дома по адресу {{ address }} ({{ members_phrase }})
+
+Коллективное обращение
+
+Суть проблемы:
+{{ summary }}
+
+Адрес: {{ address }}.
+Первые обращения жителей по этой проблеме поданы {{ first_date }}{% if last_date != first_date %}, последнее — {{ last_date }}{% endif %}. С проблемой столкнулись {{ members_phrase }}, поэтому обращение подаётся от всех вместе.
+
+{% if applicants %}
+Заявители:
+{% for applicant in applicants %}
+{{ loop.index }}. {{ applicant }}
+{% endfor %}
+{% endif %}
+{% if anonymous_count %}
+Без указания данных в письме: {% if applicants %}ещё {% endif %}{{ anonymous_phrase }}.
+{% endif %}
+
+{% if basis %}
+Основание:
+{% for item in basis %}
+- {{ item.text }} ({{ item.source }})
+{% endfor %}
+{% endif %}
+
+Требование:
+Прошу устранить указанную проблему{% if fix_deadline %} в течение {{ fix_deadline|days }} ({{ fix_deadline.source }}){% endif %} и письменно сообщить о результате{% if response_deadline %} в срок не позднее {{ response_deadline|days }} ({{ response_deadline.source }}){% endif %}.
+
+Приложения: {% if photos_count %}фотографии жителей, {{ photos_count }} шт.{% else %}нет.{% endif %}
+
+Дата: {{ date }}

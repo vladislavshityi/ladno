@@ -43,6 +43,7 @@ def to_read(issue: Issue) -> IssueRead:
         route=RouteResult.model_validate(issue.route),
         escalation_level=issue.escalation_level,
         parent_issue_id=issue.parent_issue_id,
+        collective_id=issue.collective_id,
         draft=Draft(full=issue.draft_full, pos_short=issue.draft_pos_short),
         missing_applicant_fields=missing_fields(issue.draft_full),
         external_ref=issue.external_ref,

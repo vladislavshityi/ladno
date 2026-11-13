@@ -1,6 +1,6 @@
 import pytest
 
-from app.core.text import days_phrase, numbers_are_supported, truncate
+from app.core.text import days_phrase, numbers_are_supported, plural, truncate
 
 
 def test_numbers_are_supported():
@@ -39,3 +39,12 @@ def test_truncate_hard_cut_single_word():
 )
 def test_days_phrase(days: int, kind: str, expected: str):
     assert days_phrase(days, kind) == expected
+
+
+@pytest.mark.parametrize(
+    ("count", "word"),
+    [(0, "жителей"), (1, "житель"), (2, "жителя"), (4, "жителя"), (5, "жителей"), (11, "жителей"),
+     (12, "жителей"), (21, "житель"), (22, "жителя"), (25, "жителей"), (111, "жителей")],
+)  # fmt: skip
+def test_plural(count: int, word: str):
+    assert plural(count, "житель", "жителя", "жителей") == word

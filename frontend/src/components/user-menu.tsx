@@ -1,5 +1,5 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { ChevronsUpDown, FileText, LogOut, ShieldCheck } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ChevronsUpDown, FileText, LogIn, LogOut, ShieldCheck } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,14 +9,27 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
+import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/auth-context'
 import { useMe } from '@/features/auth/hooks'
 
 export function UserMenu() {
   const { data: me } = useMe()
-  const { signOut } = useAuth()
+  const { token, signOut } = useAuth()
   const navigate = useNavigate()
+  const { pathname, search } = useLocation()
   const name = me?.first_name ?? 'Житель'
+
+  // Public pages are open to visitors: offer to sign in instead of a profile menu.
+  if (!token) {
+    return (
+      <Button asChild className="w-full rounded-xl">
+        <Link to="/" state={{ from: pathname + search }}>
+          <LogIn className="size-4" /> Войти
+        </Link>
+      </Button>
+    )
+  }
 
   return (
     <SidebarMenu>

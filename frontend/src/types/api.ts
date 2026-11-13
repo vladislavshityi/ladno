@@ -222,6 +222,144 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/issues/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Similar
+         * @description Сколько соседей по дому за последний месяц сообщили о такой же проблеме.
+         */
+        get: operations["get_similar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/collectives/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join Collective
+         * @description Присоединяет обращение к коллективному по тому же дому и категории; если его ещё нет,
+         *     создаёт вокруг самого раннего похожего обращения соседа.
+         */
+        post: operations["join_collective"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/collectives/{collective_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Collective */
+        get: operations["get_collective"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/collectives/{collective_id}/membership": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Membership
+         * @description Согласие или отказ указывать свои ФИО и квартиру в коллективном письме.
+         */
+        patch: operations["update_membership"];
+        trace?: never;
+    };
+    "/api/collectives/{collective_id}/letter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build Collective Letter
+         * @description Текст коллективного письма по шаблону; нужно не меньше двух участников.
+         */
+        post: operations["build_collective_letter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/collectives/{collective_id}/letter.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Collective Letter Pdf
+         * @description Коллективное письмо в PDF: текст и фото всех участников.
+         */
+        get: operations["get_collective_letter_pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/collectives/{collective_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Collective
+         * @description Отмечает письмо поданным: у обращений-черновиков участников начинается срок ответа.
+         */
+        post: operations["submit_collective"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/categories": {
         parameters: {
             query?: never;
@@ -792,6 +930,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/bot/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Notifications
+         * @description Сообщения жителям, которые бот ещё не отправил (сосед присоединился к обращению).
+         */
+        get: operations["list_notifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bot/notifications/{notification_id}/sent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Notification Sent
+         * @description Бот отправил сообщение: повторно оно не придёт.
+         */
+        post: operations["mark_notification_sent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ratings/companies": {
         parameters: {
             query?: never;
@@ -1135,6 +1313,54 @@ export interface components {
              */
             photo_ids: string[];
         };
+        /** CollectiveLetter */
+        CollectiveLetter: {
+            /** Text */
+            text: string;
+            /** Members Count */
+            members_count: number;
+        };
+        /**
+         * CollectiveRead
+         * @description Соседям видно только число участников: имена и квартиры не раскрываются.
+         */
+        CollectiveRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** House Id */
+            house_id: number;
+            /** Address */
+            address: string;
+            /** Category */
+            category: string;
+            /** Category Title */
+            category_title: string;
+            status: components["schemas"]["CollectiveStatus"];
+            /** Members Count */
+            members_count: number;
+            /** My Issue Id */
+            my_issue_id: string | null;
+            /**
+             * Consent Letter
+             * @description Согласие текущего жителя на ФИО и квартиру в письме
+             */
+            consent_letter: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Submitted At */
+            submitted_at: string | null;
+        };
+        /**
+         * CollectiveStatus
+         * @enum {string}
+         */
+        CollectiveStatus: "open" | "submitted" | "closed";
         /** CompanyDetail */
         CompanyDetail: {
             /** Id */
@@ -1522,6 +1748,11 @@ export interface components {
             escalation_level: number;
             /** Parent Issue Id */
             parent_issue_id: string | null;
+            /**
+             * Collective Id
+             * @description Коллективное обращение, к которому присоединён житель
+             */
+            collective_id: string | null;
             draft: components["schemas"]["Draft"];
             /**
              * Missing Applicant Fields
@@ -1550,6 +1781,26 @@ export interface components {
          * @enum {string}
          */
         IssueStatus: "draft" | "submitted" | "in_progress" | "resolved" | "no_response" | "rejected";
+        /** JoinRequest */
+        JoinRequest: {
+            /**
+             * Issue Id
+             * Format: uuid
+             * @description Своё обращение, с которым житель присоединяется
+             */
+            issue_id: string;
+            /**
+             * Consent
+             * @description Согласие на участие в коллективном обращении, только true
+             */
+            consent: boolean;
+            /**
+             * Consent Letter
+             * @description Согласие указать ФИО и квартиру в коллективном письме
+             * @default false
+             */
+            consent_letter: boolean;
+        };
         /** LinePatch */
         LinePatch: {
             /** Volume */
@@ -1647,6 +1898,11 @@ export interface components {
             };
             management_company: components["schemas"]["MapCompany"] | null;
         };
+        /** MembershipPatch */
+        MembershipPatch: {
+            /** Consent Letter */
+            consent_letter: boolean;
+        };
         /** Meta */
         Meta: {
             /**
@@ -1673,6 +1929,23 @@ export interface components {
             llm_fallbacks: {
                 [key: string]: number;
             };
+        };
+        /** Notification */
+        Notification: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Telegram Id */
+            telegram_id: number;
+            /**
+             * Issue Id
+             * Format: uuid
+             */
+            issue_id: string;
+            /** Text */
+            text: string;
         };
         /** ParsedLine */
         ParsedLine: {
@@ -2006,6 +2279,19 @@ export interface components {
              * @description Тариф региона на период в единицах строки; пусто, если неоднозначен
              */
             tariff: string | null;
+        };
+        /** SimilarIssues */
+        SimilarIssues: {
+            /**
+             * Count
+             * @description Сколько других жителей дома сообщили о такой же проблеме
+             */
+            count: number;
+            /**
+             * Collective Id
+             * @description Открытое коллективное обращение по этой проблеме, если оно уже есть
+             */
+            collective_id: string | null;
         };
         /** Submission */
         Submission: {
@@ -2716,6 +3002,354 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ManagementCompanyRead"][];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_similar: {
+        parameters: {
+            query: {
+                house_id: number;
+                category: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarIssues"];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    join_collective: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JoinRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectiveRead"];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_collective: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                collective_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectiveRead"];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_membership: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                collective_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MembershipPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectiveRead"];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    build_collective_letter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                collective_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectiveLetter"];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_collective_letter_pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                collective_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submit_collective: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                collective_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectiveRead"];
                 };
             };
             /** @description Нужен вход */
@@ -4291,6 +4925,100 @@ export interface operations {
             header?: never;
             path: {
                 issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Неверный служебный токен бота */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_notifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"][];
+                };
+            };
+            /** @description Неверный служебный токен бота */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    mark_notification_sent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notification_id: string;
             };
             cookie?: never;
         };

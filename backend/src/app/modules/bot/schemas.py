@@ -21,3 +21,10 @@ class Reminder(ApiModel):
     addressee_name: str
     deadline_at: datetime
     is_overdue: bool
+
+
+class Notification(ApiModel):
+    id: uuid.UUID
+    telegram_id: int
+    issue_id: uuid.UUID
+    text: str

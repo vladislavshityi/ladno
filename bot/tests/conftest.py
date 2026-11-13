@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from bot.api import BotIssue, Reminder
+from bot.api import BotIssue, Notification, Reminder
 from bot.config import Settings
 
 
@@ -52,3 +52,13 @@ def make_reminder(**fields) -> Reminder:
         "is_overdue": True,
     }
     return Reminder(**{**data, **fields})
+
+
+def make_notification(**fields) -> Notification:
+    data = {
+        "id": uuid.uuid4(),
+        "telegram_id": 42,
+        "issue_id": uuid.uuid4(),
+        "text": "К вашему обращению присоединился сосед. Теперь вас 2.",
+    }
+    return Notification(**{**data, **fields})

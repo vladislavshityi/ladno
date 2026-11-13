@@ -5,7 +5,7 @@ from fastapi import APIRouter, Response, status
 from app.core.deps import BotAuth, SessionDep
 from app.core.schemas import ErrorResponse
 from app.modules.bot import service
-from app.modules.bot.schemas import BotIssue, Reminder
+from app.modules.bot.schemas import BotIssue, Notification, Reminder
 
 router = APIRouter(
     prefix="/bot",
@@ -31,4 +31,17 @@ async def list_reminders(session: SessionDep) -> list[Reminder]:
 async def mark_reminder_sent(issue_id: uuid.UUID, session: SessionDep) -> Response:
     """Бот отметил, что напоминание отправлено: повторно оно не придёт."""
     await service.mark_reminder_sent(session, issue_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/notifications", response_model=list[Notification])
+async def list_notifications(session: SessionDep) -> list[Notification]:
+    """Сообщения жителям, которые бот ещё не отправил (сосед присоединился к обращению)."""
+    return await service.pending_notifications(session)
+
+
+@router.post("/notifications/{notification_id}/sent", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_notification_sent(notification_id: uuid.UUID, session: SessionDep) -> Response:
+    """Бот отправил сообщение: повторно оно не придёт."""
+    await service.mark_notification_sent(session, notification_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

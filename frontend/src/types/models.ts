@@ -26,6 +26,11 @@ export type Photo = S['PhotoRead']
 export type SendChannel = S['ChannelRead']
 export type SendResponse = S['SendResponse']
 
+export type SimilarIssues = S['SimilarIssues']
+export type Collective = S['CollectiveRead']
+export type CollectiveJoin = S['JoinRequest']
+export type CollectiveLetter = S['CollectiveLetter']
+
 export type Receipt = S['Receipt']
 export type ReceiptShort = S['ReceiptShort']
 export type ReceiptLine = S['ReceiptLine']

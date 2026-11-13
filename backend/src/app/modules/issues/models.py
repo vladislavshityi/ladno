@@ -61,6 +61,10 @@ class Issue(Base):
     parent_issue_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("issues.id", ondelete="SET NULL")
     )
+    # Коллективное обращение, к которому присоединился житель (см. modules/collectives).
+    collective_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("collective_issues.id", ondelete="SET NULL", use_alter=True)
+    )
 
     summary: Mapped[str] = mapped_column(Text, default="")
     draft_full: Mapped[str] = mapped_column(Text, default="")

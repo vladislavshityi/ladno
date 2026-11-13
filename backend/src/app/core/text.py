@@ -35,3 +35,12 @@ def days_phrase(days: int, kind: str) -> str:
     adjective = {"working": ("рабочего", "рабочих"), "calendar": ("календарного", "календарных")}
     word = adjective[kind][0 if single else 1]
     return f"{days} {word} {'дня' if single else 'дней'}"
+
+
+def plural(count: int, one: str, few: str, many: str) -> str:
+    """Форма слова по числу: plural(1, "житель", "жителя", "жителей") -> «житель»."""
+    if count % 10 == 1 and count % 100 != 11:
+        return one
+    if 2 <= count % 10 <= 4 and not 12 <= count % 100 <= 14:
+        return few
+    return many

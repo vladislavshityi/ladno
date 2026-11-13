@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
 import { useCapabilities } from '@/features/meta/hooks'
 import { useHouse } from '@/features/houses/hooks'
+import { CollectiveCard } from '@/features/collectives/components/collective-card'
 import { CompanyRatingBadge } from '@/features/ratings/components/company-rating-badge'
 import { DownloadButtons } from '../components/download-buttons'
 import { IssueActions } from '../components/issue-actions'
@@ -56,6 +57,7 @@ export default function IssuePage() {
       <IssueHeader issue={issue} />
       <CompanyRatingBadge companyId={house?.management_company?.id} />
       <MissingDataAlert issue={issue} />
+      {issue.collective_id && <CollectiveCard collectiveId={issue.collective_id} />}
       {issue.status === 'draft' && <SubmitPanel issue={issue} />}
       <IssueActions issue={issue} />
       <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-border">

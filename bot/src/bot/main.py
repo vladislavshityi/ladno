@@ -7,6 +7,7 @@ from aiogram.types import MenuButtonWebApp, WebAppInfo
 from bot.api import BackendClient
 from bot.config import Settings, get_settings
 from bot.handlers import routers
+from bot.notifications import run_notifications
 from bot.reminders import run_reminders
 
 log = logging.getLogger(__name__)
@@ -33,12 +34,16 @@ async def main() -> None:
     dp.include_routers(*routers)
 
     await set_menu_button(bot, settings)
-    reminders = asyncio.create_task(run_reminders(bot, api, settings))
+    background = [
+        asyncio.create_task(run_reminders(bot, api, settings)),
+        asyncio.create_task(run_notifications(bot, api, settings)),
+    ]
     try:
         log.info("polling started")
         await dp.start_polling(bot)
     finally:
-        reminders.cancel()
+        for task in background:
+            task.cancel()
         await api.close()
         await bot.session.close()
 

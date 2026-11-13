@@ -15,6 +15,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_engine, get_sessionmaker, utcnow
+from app.modules.collectives.models import CollectiveIssue, CollectiveMember
 from app.modules.houses.models import House, ManagementCompany
 from app.modules.issues import routing
 from app.modules.issues.models import Issue, IssueStatus
@@ -27,6 +28,8 @@ SEED = 20261114
 DEMO_USERS = 40
 HOUSES_PER_COMPANY = 7
 PERIOD_DAYS = 90
+# Коллективные обращения: (категория, число участников); дома берутся из первых УК.
+COLLECTIVES = (("elevator", 5), ("stairwell_lighting", 3), ("roof_leak", 6))
 # Категории, которые правила региона адресуют управляющей компании.
 CATEGORIES = (
     "stairwell_lighting",
@@ -57,7 +60,13 @@ def is_demo_user():
 
 
 async def clear_demo(session: AsyncSession) -> None:
-    """Обращения синтетических жителей удаляются каскадом вместе с ними."""
+    """Обращения синтетических жителей удаляются каскадом вместе с ними, как и их коллективы."""
+    demo_collectives = (
+        select(CollectiveMember.collective_id)
+        .join(User, User.id == CollectiveMember.user_id)
+        .where(is_demo_user())
+    )
+    await session.execute(delete(CollectiveIssue).where(CollectiveIssue.id.in_(demo_collectives)))
     await session.execute(delete(User).where(is_demo_user()))
     await session.commit()
 
@@ -148,6 +157,40 @@ def _company_issues(
     return issues
 
 
+async def _add_collective(
+    session: AsyncSession,
+    rng: random.Random,
+    company: ManagementCompany,
+    house: House,
+    users: list[User],
+    category: str,
+    size: int,
+) -> int:
+    """Соседи по дому с одной проблемой за последний месяц, объединённые в коллектив."""
+    route = routing.build_route(category, {}, False, company, None)
+    now = utcnow()
+    issues = []
+    for resident in rng.sample(users, size):
+        issue = _issue(rng, resident.id, house.id, category, route)
+        issue.created_at = now - timedelta(days=rng.uniform(1, 25))
+        mark_submitted(issue, issue.created_at + timedelta(hours=2))
+        issue.status = IssueStatus.SUBMITTED
+        issues.append(issue)
+    issues.sort(key=lambda i: i.created_at)
+    session.add_all(issues)
+    await session.flush()
+    collective = CollectiveIssue(
+        house_id=house.id, category=category, initiator_issue_id=issues[0].id
+    )
+    session.add(collective)
+    await session.flush()
+    for issue in issues:
+        issue.collective_id = collective.id
+        session.add(CollectiveMember(collective_id=collective.id, user_id=issue.user_id,
+                                     issue_id=issue.id, joined_at=issue.created_at))  # fmt: skip
+    return size
+
+
 async def seed_demo(session: AsyncSession) -> tuple[int, int]:
     """Пересоздаёт демо-набор; возвращает число УК и обращений."""
     await clear_demo(session)
@@ -155,6 +198,7 @@ async def seed_demo(session: AsyncSession) -> tuple[int, int]:
     users = [User(id=_new_id(rng), telegram_id=-1000 - i) for i in range(DEMO_USERS)]
     session.add_all(users)
     created = 0
+    seeded: list[tuple[ManagementCompany, list[House]]] = []
     for company, profile in zip(await _largest_companies(session), PROFILES, strict=False):
         found = await session.scalars(
             select(House)
@@ -163,9 +207,12 @@ async def seed_demo(session: AsyncSession) -> tuple[int, int]:
         )
         candidates = list(found)
         houses = rng.sample(candidates, min(HOUSES_PER_COMPANY, len(candidates)))
+        seeded.append((company, houses))
         issues = _company_issues(rng, company, houses, users, profile)
         session.add_all(issues)
         created += len(issues)
+    for (category, size), (company, houses) in zip(COLLECTIVES, seeded, strict=False):
+        created += await _add_collective(session, rng, company, houses[0], users, category, size)
     await session.commit()
     return len(PROFILES), created
 

@@ -57,5 +57,9 @@ def _build(text: str, attachments: list[PhotoFile]) -> bytes:
     return bytes(pdf.output())
 
 
+async def render_pdf(text: str, attachments: list[PhotoFile]) -> bytes:
+    return await asyncio.to_thread(_build, text, attachments)
+
+
 async def render_letter_pdf(issue: Issue, attachments: list[PhotoFile]) -> bytes:
-    return await asyncio.to_thread(_build, issue.draft_full, attachments)
+    return await render_pdf(issue.draft_full, attachments)

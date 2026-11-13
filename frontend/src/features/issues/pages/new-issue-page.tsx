@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/page-header'
+import { toast } from 'sonner'
+import { useJoinCollective } from '@/features/collectives/hooks'
+import { errorMessage } from '@/lib/api-client'
 import { useMe } from '@/features/auth/hooks'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useHouse } from '@/features/houses/hooks'
@@ -18,6 +21,7 @@ function NewIssueWizard({ presetHouse, presetCategory }: { presetHouse: House | 
   const { data: me } = useMe()
   const navigate = useNavigate()
   const create = useCreateIssue()
+  const join = useJoinCollective()
   const [step, setStep] = useState<StepId>('describe')
   const [data, setData] = useState<WizardData>(() => ({
     ...EMPTY_WIZARD,
@@ -44,7 +48,17 @@ function NewIssueWizard({ presetHouse, presetCategory }: { presetHouse: House | 
         location_details: formatLocation(data.location),
         photo_ids: data.photos.flatMap((p) => (p.id ? [p.id] : [])),
       },
-      { onSuccess: (issue) => navigate(`/issues/${issue.id}`) },
+      {
+        onSuccess: async (issue) => {
+          if (data.collective.join) {
+            // The issue is already saved: a failed join must not lose it, so only report the error.
+            await join
+              .mutateAsync({ issue_id: issue.id, consent: true, consent_letter: data.collective.consentLetter })
+              .catch((err) => toast.error(errorMessage(err)))
+          }
+          navigate(`/issues/${issue.id}`)
+        },
+      },
     )
 
   return (
@@ -56,7 +70,7 @@ function NewIssueWizard({ presetHouse, presetCategory }: { presetHouse: House | 
         {step === 'category' && <CategoryStep {...props} />}
         {step === 'questions' && <QuestionsStep {...props} />}
         {step === 'address' && <AddressStep {...props} />}
-        {step === 'route' && <RouteStep {...props} onCreate={createIssue} creating={create.isPending} />}
+        {step === 'route' && <RouteStep {...props} onCreate={createIssue} creating={create.isPending || join.isPending} />}
       </div>
     </div>
   )

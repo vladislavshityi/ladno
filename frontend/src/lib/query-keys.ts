@@ -12,6 +12,8 @@ export const qk = {
   issue: (id: string) => ['issues', id] as const,
   submission: (id: string) => ['issues', id, 'submission'] as const,
   channels: (id: string) => ['issues', id, 'channels'] as const,
+  similar: (houseId: number | null, category: string) => ['similar', houseId, category] as const,
+  collective: (id: string) => ['collectives', id] as const,
   receipts: ['receipts'] as const,
   receipt: (id: string) => ['receipts', id] as const,
   samples: ['receipts', 'samples'] as const,

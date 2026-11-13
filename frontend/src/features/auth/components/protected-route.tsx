@@ -10,10 +10,10 @@ import { useMe } from '../hooks'
 export function RequireAuth() {
   const { token } = useAuth()
   const { data: me, isError, refetch } = useMe()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
 
-  // The target is kept so a deep link (e.g. from the bot) opens after the automatic sign-in.
-  if (!token) return <Navigate to="/" replace state={{ from: pathname }} />
+  // The target (with its query) is kept so a deep link (e.g. from the bot) opens after the automatic sign-in.
+  if (!token) return <Navigate to="/" replace state={{ from: pathname + search }} />
   if (isError) {
     return (
       <div className="mx-auto flex min-h-svh max-w-md items-center px-4">

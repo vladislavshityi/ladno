@@ -13,6 +13,7 @@ from app.core.schemas import ErrorResponse
 from app.modules.assistant.router import router as assistant_router
 from app.modules.auth.router import router as auth_router
 from app.modules.bot.router import router as bot_router
+from app.modules.collectives.router import router as collectives_router
 from app.modules.houses.router import router as houses_router
 from app.modules.issues.photos import router as photos_router
 from app.modules.issues.router import router as issues_router
@@ -66,6 +67,7 @@ def create_app() -> FastAPI:
         auth_router,
         users_router,
         houses_router,
+        collectives_router,  # раньше issues: /issues/similar не должен попасть в /issues/{issue_id}
         issues_router,
         submissions_router,
         photos_router,

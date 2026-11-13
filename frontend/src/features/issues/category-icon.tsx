@@ -11,6 +11,7 @@ import {
   Snowflake,
   SprayCan,
   Trash2,
+  Waves,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -27,6 +28,8 @@ const ICONS: Record<string, LucideIcon> = {
   snowflake: Snowflake,
   'circle-alert': CircleAlert,
   'plug-zap': PlugZap,
+  waves: Waves,
+  'more-horizontal': Ellipsis,
 }
 
 export function CategoryIcon({ name, className }: { name: string; className?: string }) {
