@@ -2,11 +2,15 @@
 
 from app.modules.users.models import User
 
-PLACEHOLDERS = {"full_name": "{{ФИО}}", "apartment": "{{КВАРТИРА}}", "phone": "{{ТЕЛЕФОН}}"}
+PLACEHOLDERS = {
+    "full_name": "[укажите ФИО]",
+    "apartment": "[укажите номер]",
+    "phone": "[укажите телефон]",
+}
 
 
 def applicant_line(user: User) -> str:
-    """«Иванов И. И., кв. 12, тел. +7...»; чего нет в профиле, то метка для ручной вставки."""
+    """«Иванов И. И., кв. 12, тел. +7...»; чего нет в профиле, то пометка «[укажите …]»."""
     parts = [
         user.full_name or PLACEHOLDERS["full_name"],
         f"кв. {user.apartment or PLACEHOLDERS['apartment']}",
@@ -15,3 +19,8 @@ def applicant_line(user: User) -> str:
     if user.email:
         parts.append(f"e-mail {user.email}")
     return ", ".join(parts)
+
+
+def missing_fields(text: str) -> list[str]:
+    """Какие данные жителя в тексте письма остались пометками."""
+    return [field for field, mark in PLACEHOLDERS.items() if mark in text]

@@ -69,7 +69,7 @@ async def explain_compare(llm: LLMClient | None, diff: Compare) -> str:
     fallback = texts.diff_explanation(diff)
     if llm is None:
         return fallback
-    source = diff.model_dump_json(exclude={"explanation"})
+    source = diff.model_dump_json()
     messages = [{"role": "system", "content": _DIFF_PROMPT}, {"role": "user", "content": source}]
     try:
         text = (await llm.complete(messages)).strip()

@@ -40,10 +40,20 @@ async def list_receipts(user: CurrentUser, session: SessionDep) -> list[s.Receip
 
 @router.get("/compare", response_model=s.Compare)
 async def compare_receipts(
-    base: uuid.UUID, target: uuid.UUID, user: CurrentUser, session: SessionDep, llm: LLMDep
+    base: uuid.UUID, target: uuid.UUID, user: CurrentUser, session: SessionDep
 ) -> s.Compare:
-    """Что изменилось между двумя квитанциями: по строкам, тарифу и объёму."""
-    return await analysis.compare(session, user.id, llm, base, target)
+    """Что изменилось между двумя квитанциями: по строкам, тарифу и объёму. Без модели, быстро."""
+    return await analysis.compare(session, user.id, base, target)
+
+
+@router.get(
+    "/compare/explanation", response_model=s.CompareExplanation, dependencies=[LLMRateLimit]
+)
+async def compare_explanation(
+    base: uuid.UUID, target: uuid.UUID, user: CurrentUser, session: SessionDep, llm: LLMDep
+) -> s.CompareExplanation:
+    """Пояснение к сравнению. Первый запрос может занять до минуты, затем берётся из кеша."""
+    return await analysis.compare_explanation(session, user.id, llm, base, target)
 
 
 @router.get("/{receipt_id}", response_model=s.Receipt)

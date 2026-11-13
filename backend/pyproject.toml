@@ -43,6 +43,8 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 "alembic/**" = ["E501"]
+# Схемы наследуют ApiModel, а ruff по имени базы не узнаёт в них pydantic: [] там безопасен.
+"src/app/modules/*/schemas.py" = ["RUF012"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

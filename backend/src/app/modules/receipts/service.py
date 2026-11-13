@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import files
+from app.core.db import utcnow
 from app.core.errors import (
     BadGateway,
     NotFound,
@@ -208,6 +209,7 @@ async def patch_line(
         receipt.period, [line_data(x) for x in receipt.lines], receipt.total
     )
     receipt.status = "needs_review" if receipt.warnings else "parsed"
+    receipt.updated_at = utcnow()
     await _explain(llm, receipt, only_line_id=line.id)
     await session.commit()
     return receipt

@@ -19,6 +19,7 @@ from app.modules.issues.schemas import (
 )
 
 UK_UNKNOWN_NAME = "Ваша УК (укажите её в профиле)"
+UK_CONTACTS_UNKNOWN = "Контакты УК не найдены в справочнике, уточните у соседей или на сайте УК."
 
 
 def category_rules(category: str) -> dict[str, Any]:
@@ -46,6 +47,11 @@ def _company_channels(company: ManagementCompany) -> list[Channel]:
     if company.site:
         channels.append(Channel(type="url", value=company.site, label="Сайт УК"))
     return channels
+
+
+def custom_company(name: str) -> ManagementCompany:
+    """УК, введённая жителем: названия нет в справочнике, контактов нет."""
+    return ManagementCompany(name=name, phones=[])
 
 
 def _managing_company(company: ManagementCompany | None) -> Addressee:
@@ -83,12 +89,23 @@ def build_route(
 ) -> RouteResult:
     decision = rules.decide(category_rules(category), answers, already_contacted_uk)
     is_uk = decision.addressee_key == rules.MANAGING_COMPANY
+    addressee = get_addressee(decision.addressee_key, company)
+    explanation = decision.explanation
+    fix_deadline, response_deadline = decision.fix_deadline, decision.response_deadline
+    if is_uk and company and company.id is None:
+        explanation = f"{explanation} {UK_CONTACTS_UNKNOWN}".strip()
+    if decision.shifted:
+        explanation = (
+            f"Вы уже обращались в УК без результата — следующая ступень: {addressee.name}."
+        )
+        entry = get_region().addressees.get(addressee.key, {})
+        fix_deadline, response_deadline = None, entry.get("response_deadline")
     return RouteResult(
-        addressee=get_addressee(decision.addressee_key, company),
-        explanation=decision.explanation,
+        addressee=addressee,
+        explanation=explanation,
         basis=[Basis.model_validate(b) for b in decision.basis],
-        fix_deadline=_deadline(decision.fix_deadline),
-        response_deadline=_deadline(decision.response_deadline),
+        fix_deadline=_deadline(fix_deadline),
+        response_deadline=_deadline(response_deadline),
         escalation=[_step(k, company) for k in decision.escalation],
         recalculation_hint=recalculation_hint if is_uk else None,
     )

@@ -19,6 +19,8 @@ class User(Base):
     email: Mapped[str | None] = mapped_column(String(200))
     apartment: Mapped[str | None] = mapped_column(String(16))
     entrance: Mapped[str | None] = mapped_column(String(8))
+    custom_address: Mapped[str | None] = mapped_column(String(500))
+    custom_company_name: Mapped[str | None] = mapped_column(String(300))
     management_company_id: Mapped[int | None] = mapped_column(
         ForeignKey("management_companies.id", ondelete="SET NULL")
     )

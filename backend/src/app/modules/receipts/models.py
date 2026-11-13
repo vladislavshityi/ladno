@@ -1,11 +1,12 @@
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.db import Base, CreatedAt, UuidPk
+from app.core.db import Base, CreatedAt, UuidPk, utcnow
 
 MONEY = Numeric(14, 2)
 RATE = Numeric(14, 4)
@@ -29,6 +30,9 @@ class Receipt(Base):
     warnings: Mapped[list[str]] = mapped_column(JSONB, default=list)
     sample_id: Mapped[str | None] = mapped_column(String(40))
     created_at: Mapped[CreatedAt]
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, server_default=func.now()
+    )
 
     lines: Mapped[list["ReceiptLine"]] = relationship(
         cascade="all, delete-orphan", order_by="ReceiptLine.id", lazy="selectin"
@@ -52,3 +56,19 @@ class ReceiptLine(Base):
     total: Mapped[Decimal] = mapped_column(MONEY)
     method: Mapped[str] = mapped_column(String(16), default="unknown")
     explanation: Mapped[str | None] = mapped_column(Text)
+
+
+class CompareExplanation(Base):
+    """Пояснение к сравнению двух квитанций; устаревает, когда любая из них изменена."""
+
+    __tablename__ = "compare_explanations"
+
+    base_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("receipts.id", ondelete="CASCADE"), primary_key=True
+    )
+    target_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("receipts.id", ondelete="CASCADE"), primary_key=True
+    )
+    base_updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    target_updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    text: Mapped[str] = mapped_column(Text)

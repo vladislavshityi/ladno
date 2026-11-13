@@ -116,7 +116,7 @@ async def test_profile_personal_data_goes_into_letters_by_code(
     ).json()
     full = issue["draft"]["full"]
     assert "От: Иванов И. И., кв. 12, тел. +79990001122, e-mail i@example.ru" in full
-    assert "{{" not in full and "Иванов" not in issue["draft"]["pos_short"]
+    assert "[укажите" not in full and "Иванов" not in issue["draft"]["pos_short"]
     receipt = (await client.post("/receipts/samples/2026-11", headers=anna.headers)).json()
     url = f"/receipts/{receipt['id']}/recalculation-letter"
     letter = (await client.post(url, json={}, headers=anna.headers)).json()["text"]
@@ -128,7 +128,7 @@ async def test_partial_profile_keeps_placeholders(client: httpx.AsyncClient, ann
     issue = (
         await client.post("/issues", json={"category": "graffiti"}, headers=anna.headers)
     ).json()
-    assert "От: Петров П. П., кв. {{КВАРТИРА}}, тел. {{ТЕЛЕФОН}}" in issue["draft"]["full"]
+    assert "От: Петров П. П., кв. [укажите номер], тел. [укажите телефон]" in issue["draft"]["full"]
 
 
 async def test_personal_data_never_goes_to_llm(client: httpx.AsyncClient, anna: Account, llm):

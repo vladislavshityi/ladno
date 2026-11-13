@@ -62,6 +62,13 @@ async def test_receipts_are_private(client: httpx.AsyncClient, anna: Account, bo
         assert response.status_code == 404, url
 
 
+async def explanation(client: httpx.AsyncClient, who: Account, base: dict, target: dict) -> str:
+    params = {"base": base["id"], "target": target["id"]}
+    response = await client.get("/receipts/compare/explanation", params=params, headers=who.headers)
+    assert response.status_code == 200, response.text
+    return response.json()["text"]
+
+
 async def test_compare_explains_heating_season(client: httpx.AsyncClient, anna: Account):
     october = await load_sample(client, anna, "2026-10")
     november = await load_sample(client, anna, "2026-11")
@@ -77,7 +84,9 @@ async def test_compare_explains_heating_season(client: httpx.AsyncClient, anna: 
     assert hot["delta"] == "646.56"
     heating = next(x for x in diff["lines"] if x["service_code"] == "heating")
     assert heating["flags"] == ["growth_over_15pct"] and heating["delta_volume"] == "2478.20"
-    assert "выросла на 3287,01 ₽" in diff["explanation"] and "Отопление" in diff["explanation"]
+    assert "explanation" not in diff
+    text = await explanation(client, anna, october, november)
+    assert "выросла на 3287,01 ₽" in text and "Отопление" in text
 
 
 async def test_compare_september_october_shows_heating_line_and_indexation(
@@ -93,22 +102,54 @@ async def test_compare_september_october_shows_heating_line_and_indexation(
         )
     ).json()
     assert set(diff["flags"]) == {"heating_season_start", "tariff_indexation"}
-    assert "отопительный сезон" in diff["explanation"]
+    assert "отопительный сезон" in await explanation(client, anna, september, october)
 
 
-async def test_compare_llm_text_is_checked_against_calculations(
+async def test_compare_is_instant_and_never_calls_llm(
     client: httpx.AsyncClient, anna: Account, llm: FakeLLM
 ):
     llm.replies = ["[]"]
     october = await load_sample(client, anna, "2026-10")
     november = await load_sample(client, anna, "2026-11")
+    calls = len(llm.calls)
     params = {"base": october["id"], "target": november["id"]}
+    assert (await client.get("/receipts/compare", params=params, headers=anna.headers)).is_success
+    assert len(llm.calls) == calls
+
+
+async def test_compare_explanation_is_checked_cached_and_reset_by_edit(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    llm.replies = ["[]"]
+    october = await load_sample(client, anna, "2026-10")
+    november = await load_sample(client, anna, "2026-11")
     llm.replies = ["Отопление подорожало, всего на 3287,01 ₽ больше."]
-    good = (await client.get("/receipts/compare", params=params, headers=anna.headers)).json()
-    assert good["explanation"] == llm.replies[0]
+    calls = len(llm.calls)
+    assert await explanation(client, anna, october, november) == llm.replies[0]
+    llm.replies = ["Другой текст."]
+    assert (
+        await explanation(client, anna, october, november)
+        == "Отопление подорожало, всего на 3287,01 ₽ больше."
+    )
+    assert len(llm.calls) == calls + 1  # второй раз из кеша
+
+    await raise_water_tariff(client, anna, november)
     llm.replies = ["Квитанция выросла на 9999 ₽."]
-    bad = (await client.get("/receipts/compare", params=params, headers=anna.headers)).json()
-    assert "9999" not in bad["explanation"] and "3287,01" in bad["explanation"]
+    bad = await explanation(client, anna, october, november)
+    assert "9999" not in bad  # правка строки сбросила кеш, текст модели не прошёл проверку
+
+
+async def test_compare_explanation_without_llm_and_foreign_receipts(
+    client: httpx.AsyncClient, anna: Account, boris: Account
+):
+    october = await load_sample(client, anna, "2026-10")
+    november = await load_sample(client, anna, "2026-11")
+    assert "3287,01" in await explanation(client, anna, october, november)
+    params = {"base": october["id"], "target": november["id"]}
+    foreign = await client.get(
+        "/receipts/compare/explanation", params=params, headers=boris.headers
+    )
+    assert foreign.status_code == 404
 
 
 async def test_check_clean_months_and_norm_increased_finding(
@@ -173,9 +214,9 @@ async def test_recalculation_letter(client: httpx.AsyncClient, anna: Account):
     request = {"finding_types": ["tariff_mismatch"]}
     letter = (await client.post(url, json=request, headers=anna.headers)).json()["text"]
     for part in (
-        "{{ФИО}}",
-        "{{КВАРТИРА}}",
-        "{{ТЕЛЕФОН}}",
+        "[укажите ФИО]",
+        "[укажите номер]",
+        "[укажите телефон]",
         "Заявление о перерасчёте",
         "ПП РФ № 354",
     ):

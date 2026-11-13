@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.core.schemas import Money, ORMModel
+from app.core.schemas import ApiModel, Money, ORMModel
 
 ServiceCode = Literal[
     "maintenance", "cold_water", "hot_water", "hot_water_heat", "sewerage", "heating",
@@ -27,7 +27,7 @@ LineFlag = Literal[
 CompareFlag = Literal["heating_season_start", "tariff_indexation"]
 
 
-class ReceiptCompany(BaseModel):
+class ReceiptCompany(ApiModel):
     name: str | None = None
     inn: str | None = None
 
@@ -46,7 +46,7 @@ class ReceiptLine(ORMModel):
     explanation: str | None = Field(None, description="Что это за строка, простым языком")
 
 
-class Receipt(BaseModel):
+class Receipt(ApiModel):
     id: uuid.UUID
     status: ReceiptStatus
     period: str | None = Field(None, description="YYYY-MM; пусто, если период не распознан")
@@ -66,7 +66,7 @@ class ReceiptShort(ORMModel):
     status: ReceiptStatus
 
 
-class ReceiptSample(BaseModel):
+class ReceiptSample(ApiModel):
     id: str
     title: str
 
@@ -101,7 +101,7 @@ class ParsedReceipt(BaseModel):
     total: Money | None = None
 
 
-class CompareLine(BaseModel):
+class CompareLine(ApiModel):
     service_code: ServiceCode
     service_name: str
     accrued_base: Money
@@ -114,7 +114,7 @@ class CompareLine(BaseModel):
     flags: list[LineFlag] = []
 
 
-class Compare(BaseModel):
+class Compare(ApiModel):
     base_period: str
     target_period: str
     total_base: Money
@@ -122,10 +122,13 @@ class Compare(BaseModel):
     total_delta: Money
     lines: list[CompareLine] = []
     flags: list[CompareFlag] = []
-    explanation: str | None = Field(None, description="Почему изменилась сумма")
 
 
-class Finding(BaseModel):
+class CompareExplanation(ApiModel):
+    text: str = Field(description="Почему изменилась сумма; частично пишет языковая модель")
+
+
+class Finding(ApiModel):
     type: FindingType
     service_code: ServiceCode
     title: str
@@ -134,7 +137,7 @@ class Finding(BaseModel):
     confidence: Literal["high", "medium", "low"]
 
 
-class Check(BaseModel):
+class Check(ApiModel):
     findings: list[Finding] = []
     total_possible_overpayment: Money
 
@@ -145,7 +148,7 @@ class RecalculationLetterRequest(BaseModel):
     )
 
 
-class RecalculationLetter(BaseModel):
+class RecalculationLetter(ApiModel):
     text: str = Field(
         description="Текст заявления; ФИО, квартира и телефон — метки для подстановки"
     )

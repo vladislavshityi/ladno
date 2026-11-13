@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from datetime import date
 from typing import Any
 
@@ -11,16 +12,18 @@ from app.core.region import get_region
 from app.core.templates import render
 from app.core.text import numbers_are_supported, truncate
 from app.llm.client import LLMClient
-from app.modules.issues.rules import HOUSING_INSPECTION
-from app.modules.issues.schemas import Draft, RouteResult
+from app.modules.issues.rules import HOUSING_INSPECTION, MANAGING_COMPANY
+from app.modules.issues.schemas import Addressee, Draft, RouteResult
 
 log = logging.getLogger(__name__)
 
 SUMMARY_MAX_CHARS = 600
 _SUMMARY_PROMPT = (
-    "Напиши один абзац сути обращения жителя в управляющую компанию или администрацию по "
-    "фактам ниже. Не добавляй чисел, имён и сведений, которых нет в фактах."
+    "Напиши один абзац сути обращения жителя по фактам ниже. Адресат указан в поле addressee "
+    "только для сведения: не называй его и не пиши, в какую организацию обращаешься. "
+    "Не добавляй чисел, имён и сведений, которых нет в фактах."
 )
+_UK_APPEAL = re.compile(r"\b(?:в|к)\s+(?:управляющ\w+\s+(?:компани|организаци)\w+|УК\b)", re.I)
 
 
 def category_title(category: str) -> str:
@@ -43,8 +46,17 @@ def _template_summary(title: str, answers: dict[str, str]) -> str:
     return " ".join(render("letters/issue_summary.j2", title=title, answers=answers).split())
 
 
-async def _llm_summary(llm: LLMClient, title: str, answers: dict[str, str]) -> str | None:
-    facts = json.dumps({"category": title, "answers": answers}, ensure_ascii=False)
+def summary_fits(text: str, addressee_key: str) -> bool:
+    """Текст не должен адресовать обращение в УК, если адресат — другая организация."""
+    return addressee_key == MANAGING_COMPANY or not _UK_APPEAL.search(text)
+
+
+async def _llm_summary(
+    llm: LLMClient, title: str, answers: dict[str, str], addressee: Addressee
+) -> str | None:
+    facts = json.dumps(
+        {"category": title, "answers": answers, "addressee": addressee.name}, ensure_ascii=False
+    )
     messages = [{"role": "system", "content": _SUMMARY_PROMPT}, {"role": "user", "content": facts}]
     try:
         text = (await llm.complete(messages)).strip()
@@ -52,13 +64,15 @@ async def _llm_summary(llm: LLMClient, title: str, answers: dict[str, str]) -> s
         log.warning("Модель не написала суть обращения, берём шаблон")
         return None
     valid = 0 < len(text) <= SUMMARY_MAX_CHARS and numbers_are_supported(text, facts)
-    return text if valid else None
+    return text if valid and summary_fits(text, addressee.key) else None
 
 
-async def build_summary(llm: LLMClient | None, category: str, answers: dict[str, str]) -> str:
+async def build_summary(
+    llm: LLMClient | None, category: str, answers: dict[str, str], addressee: Addressee
+) -> str:
     """Текст модели берём, только если прошёл проверки; иначе шаблонный."""
     title, readable = category_title(category), readable_answers(category, answers)
-    text = await _llm_summary(llm, title, readable) if llm else None
+    text = await _llm_summary(llm, title, readable, addressee) if llm else None
     return text or _template_summary(title, readable)
 
 

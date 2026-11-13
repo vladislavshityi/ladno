@@ -4,11 +4,17 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, PlainSerializer
 
 
-class ORMModel(BaseModel):
+class ApiModel(BaseModel):
+    """База схем ответов: поля с default сервер отдаёт всегда, в OpenAPI они обязательны."""
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+
+class ORMModel(ApiModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ErrorResponse(BaseModel):
+class ErrorResponse(ApiModel):
     detail: str
     code: str
 

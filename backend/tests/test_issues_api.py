@@ -2,8 +2,10 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import httpx
+import pytest
 
 from tests.conftest import Account, FakeLLM
+from tests.test_rules import uk_rules_with_ladder
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
 BODY = {"patch": {"json": {"external_ref": "x"}}}
@@ -63,8 +65,8 @@ async def test_dark_entrance_scenario_to_submission(client: httpx.AsyncClient, a
     assert issue["status"] == "draft" and issue["address"] == hit["address"]
     assert issue["category_title"] == "Не работает освещение в подъезде"
     draft = issue["draft"]
-    assert "{{ФИО}}" in draft["full"] and "подъезд 2" in draft["full"]
-    assert "{{" not in draft["pos_short"] and len(draft["pos_short"]) <= 1000
+    assert "[укажите ФИО]" in draft["full"] and "подъезд 2" in draft["full"]
+    assert "[укажите" not in draft["pos_short"] and len(draft["pos_short"]) <= 1000
     assert issue["deadline_at"] is None
 
     sub = (await client.get(f"/issues/{issue['id']}/submission", headers=anna.headers)).json()
@@ -256,3 +258,96 @@ async def test_create_validates_category_and_photos(client: httpx.AsyncClient, a
         "/issues", json={**DARK, "photo_ids": ["not-uuid"]}, headers=anna.headers
     )
     assert bad.status_code == 422 and bad.json()["code"] == "validation_error"
+
+
+@pytest.mark.parametrize(("category", "answers", "rule"), uk_rules_with_ladder())
+async def test_route_after_uk_names_next_step_in_explanation(
+    client: httpx.AsyncClient, anna: Account, category: str, answers: dict, rule: dict
+):
+    body = {"category": category, "answers": answers, "already_contacted_uk": True}
+    route = (await client.post("/issues/route", json=body, headers=anna.headers)).json()
+    assert route["addressee"]["key"] == rule["escalation"][0]
+    assert route["explanation"].startswith("Вы уже обращались в УК без результата")
+    assert route["addressee"]["name"] in route["explanation"]
+    assert "обязанность УК" not in route["explanation"] and route["fix_deadline"] is None
+
+
+async def test_summary_must_not_address_uk_when_addressee_is_inspection(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    llm.replies = ["Обращаюсь в управляющую компанию: в подъезде не горит свет."]
+    issue = await create(client, anna, already_contacted_uk=True)
+    assert issue["route"]["addressee"]["key"] == "housing_inspection"
+    assert "управляющую компанию" not in issue["draft"]["full"]
+    assert "Обращение касается" in issue["draft"]["full"]
+    prompt = json.dumps(llm.calls[0], ensure_ascii=False)
+    assert "Государственная жилищная инспекция" in prompt
+    llm.replies = ["В подъезде не горит свет уже больше недели."]
+    fine = await create(client, anna, already_contacted_uk=True)
+    assert "больше недели" in fine["draft"]["full"]
+
+
+async def test_summary_for_uk_may_mention_uk(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    llm.replies = ["Прошу управляющую компанию заменить лампы, обращаюсь в управляющую компанию."]
+    issue = await create(client, anna)
+    assert "заменить лампы" in issue["draft"]["full"]
+
+
+async def test_escalation_replaces_summary_that_names_uk(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    llm.replies = ["Обращаюсь в управляющую компанию: свет не горит."]
+    first = await create(client, anna)
+    assert "Обращаюсь в управляющую компанию" in first["draft"]["full"]
+    second = (await client.post(f"/issues/{first['id']}/escalate", headers=anna.headers)).json()
+    assert "управляющую компанию" not in second["draft"]["full"].split("Суть проблемы:")[1]
+
+
+async def test_route_by_house_id_uses_that_house_company(client: httpx.AsyncClient, anna: Account):
+    hit = (await client.get("/addresses/search", params={"q": "Кутузова 5а"})).json()[0]
+    house = await client.get(f"/houses/{hit['house_id']}", headers=anna.headers)
+    company = house.json()["management_company"]["name"]
+    route = (
+        await client.post(
+            "/issues/route", json={**DARK, "house_id": hit["house_id"]}, headers=anna.headers
+        )
+    ).json()
+    assert route["addressee"]["name"] == company
+    profile_only = (await client.post("/issues/route", json=DARK, headers=anna.headers)).json()
+    assert "укажите её в профиле" in profile_only["addressee"]["name"]
+
+
+async def test_missing_applicant_fields_and_refresh_letter(
+    client: httpx.AsyncClient, anna: Account
+):
+    issue = await create(client, anna)
+    assert issue["missing_applicant_fields"] == ["full_name", "apartment", "phone"]
+    assert (
+        "От: [укажите ФИО], кв. [укажите номер], тел. [укажите телефон]" in issue["draft"]["full"]
+    )
+    edited = issue["draft"]["full"].replace("Прошу устранить", "Очень прошу устранить")
+    patch = {"draft": {"full": edited, "pos_short": issue["draft"]["pos_short"]}}
+    await client.patch(f"/issues/{issue['id']}", json=patch, headers=anna.headers)
+
+    profile = {"full_name": "Иванов И. И.", "apartment": "12", "phone": "+79990001122"}
+    await client.put("/users/me/profile", json=profile, headers=anna.headers)
+    refreshed = (
+        await client.post(f"/issues/{issue['id']}/refresh-letter", headers=anna.headers)
+    ).json()
+    assert refreshed["missing_applicant_fields"] == []
+    assert "От: Иванов И. И., кв. 12, тел. +79990001122" in refreshed["draft"]["full"]
+    assert "Очень прошу устранить" in refreshed["draft"]["full"]  # правки остались
+    assert refreshed["draft"]["pos_short"] == issue["draft"]["pos_short"]
+
+
+async def test_refresh_letter_only_for_own_drafts(
+    client: httpx.AsyncClient, anna: Account, boris: Account
+):
+    issue = await create(client, anna)
+    url = f"/issues/{issue['id']}/refresh-letter"
+    assert (await client.post(url, headers=boris.headers)).status_code == 404
+    await submit(client, anna, issue["id"])
+    response = await client.post(url, headers=anna.headers)
+    assert response.status_code == 409 and response.json()["code"] == "not_a_draft"

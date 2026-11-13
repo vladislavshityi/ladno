@@ -29,5 +29,6 @@ class House(Base):
     management_company_id: Mapped[int | None] = mapped_column(
         ForeignKey("management_companies.id", ondelete="SET NULL")
     )
+    management_company_source: Mapped[str | None] = mapped_column(String(20))
 
     management_company: Mapped[ManagementCompany | None] = relationship(lazy="joined")

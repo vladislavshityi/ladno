@@ -1,4 +1,10 @@
 import httpx
+import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.modules.houses.models import House
+from tests.conftest import Account
 
 
 async def suggest(client: httpx.AsyncClient, q: str) -> list[str]:
@@ -43,3 +49,28 @@ async def test_companies_list_and_search(client: httpx.AsyncClient):
     found = (await client.get("/management-companies", params={"q": "дВкС"})).json()
     assert found and all("двкс" in c["name"].lower() for c in found)
     assert (await client.get("/management-companies", params={"q": "%_zzz"})).json() == []
+
+
+@pytest.mark.parametrize("source", ["gis_zhkh", "vl_ru"])
+async def test_company_source_comes_from_house_link(
+    client: httpx.AsyncClient, session: AsyncSession, source: str
+):
+    stmt = select(House.id).where(House.management_company_source == source).limit(1)
+    house = (await client.get(f"/houses/{await session.scalar(stmt)}")).json()
+    assert house["management_company"]["source"] == source
+    assert "management_company_source" not in house
+    assert all(c["source"] is None for c in (await client.get("/management-companies")).json())
+
+
+async def test_profile_company_source_follows_house_company(
+    client: httpx.AsyncClient, session: AsyncSession, anna: Account
+):
+    stmt = select(House).where(House.management_company_source == "vl_ru").limit(1)
+    house = await session.scalar(stmt)
+    profile = {"house_id": house.id}
+    me = (await client.put("/users/me/profile", json=profile, headers=anna.headers)).json()
+    assert me["management_company"]["source"] == "vl_ru"
+    other = house.management_company_id % 400 + 1
+    profile = {"house_id": house.id, "management_company_id": other}
+    me = (await client.put("/users/me/profile", json=profile, headers=anna.headers)).json()
+    assert me["management_company"]["source"] is None  # выбрана жителем

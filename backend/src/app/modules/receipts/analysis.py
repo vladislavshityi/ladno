@@ -9,8 +9,9 @@ from app.core.region import get_region
 from app.llm.client import LLMClient
 from app.modules.issues.schemas import RecalculationHint
 from app.modules.receipts import diff, explain, overcharge, service, tariffs
+from app.modules.receipts.models import CompareExplanation as CompareExplanationRow
 from app.modules.receipts.models import Receipt, ReceiptLine
-from app.modules.receipts.schemas import Check, Compare, Finding
+from app.modules.receipts.schemas import Check, Compare, CompareExplanation, Finding
 
 MAINTENANCE = "maintenance"
 
@@ -40,20 +41,50 @@ DESCRIPTIONS = {
 }
 
 
+def _compare(base: Receipt, target: Receipt) -> Compare:
+    return Compare.model_validate(
+        diff.compare(service.receipt_data(base), service.receipt_data(target)),
+        from_attributes=True,
+    )
+
+
 async def compare(
+    session: AsyncSession, user_id: uuid.UUID, base_id: uuid.UUID, target_id: uuid.UUID
+) -> Compare:
+    """Расчёт без языковой модели: считается мгновенно."""
+    base = await service.get_owned(session, user_id, base_id)
+    target = await service.get_owned(session, user_id, target_id)
+    return _compare(base, target)
+
+
+async def compare_explanation(
     session: AsyncSession,
     user_id: uuid.UUID,
     llm: LLMClient | None,
     base_id: uuid.UUID,
     target_id: uuid.UUID,
-) -> Compare:
+) -> CompareExplanation:
+    """Пояснение берётся из кеша, пока обе квитанции не менялись; иначе пишется заново."""
     base = await service.get_owned(session, user_id, base_id)
     target = await service.get_owned(session, user_id, target_id)
-    result = Compare.model_validate(
-        diff.compare(service.receipt_data(base), service.receipt_data(target)),
-        from_attributes=True,
+    cached = await session.get(CompareExplanationRow, (base.id, target.id))
+    if cached and (cached.base_updated_at, cached.target_updated_at) == (
+        base.updated_at,
+        target.updated_at,
+    ):
+        return CompareExplanation(text=cached.text)
+    text = await explain.explain_compare(llm, _compare(base, target))
+    await session.merge(
+        CompareExplanationRow(
+            base_id=base.id,
+            target_id=target.id,
+            base_updated_at=base.updated_at,
+            target_updated_at=target.updated_at,
+            text=text,
+        )
     )
-    return result.model_copy(update={"explanation": await explain.explain_compare(llm, result)})
+    await session.commit()
+    return CompareExplanation(text=text)
 
 
 async def _previous(session: AsyncSession, user_id: uuid.UUID, receipt: Receipt) -> Receipt | None:

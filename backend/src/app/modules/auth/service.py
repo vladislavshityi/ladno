@@ -23,6 +23,7 @@ def get_config() -> AuthConfig:
     return AuthConfig(
         telegram_bot_username=settings.telegram_bot_username,
         dev_login_enabled=settings.app_env == "dev",
+        consent_version=settings.consent_version,
     )
 
 

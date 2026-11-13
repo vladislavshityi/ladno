@@ -15,6 +15,7 @@ from app.modules.houses.schemas import AddressSuggestion
 SEARCH_LIMIT = 10
 COMPANIES_LIMIT = 20
 SEED_CHUNK = 1000
+COMPANY_SOURCES = {"dom.gosuslugi.ru": "gis_zhkh", "vl.ru": "vl_ru"}
 
 
 @dataclass(frozen=True)
@@ -103,6 +104,9 @@ def _company_row(row: dict[str, str]) -> dict:
 
 def _house_row(row: dict[str, str]) -> dict:
     lat, lon, company = (_blank_to_none(row[k]) for k in ("lat", "lon", "management_company_id"))
+    source = next(
+        (v for k, v in COMPANY_SOURCES.items() if k in row["management_company_source"]), None
+    )
     return {
         "fias_id": row["fias_id"],
         "address": row["address"],
@@ -110,6 +114,7 @@ def _house_row(row: dict[str, str]) -> dict:
         "lon": float(lon) if lon else None,
         "district": _blank_to_none(row["district"]),
         "management_company_id": int(company) if company else None,
+        "management_company_source": source if company else None,
     }
 
 

@@ -1,4 +1,6 @@
+import re
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import select
@@ -21,7 +23,7 @@ from app.modules.issues.schemas import (
     RouteResult,
 )
 from app.modules.receipts import analysis
-from app.modules.users.applicant import applicant_line
+from app.modules.users.applicant import applicant_line, missing_fields
 from app.modules.users.models import User
 
 
@@ -32,7 +34,7 @@ def to_read(issue: Issue) -> IssueRead:
         category_title=drafts.category_title(issue.category),
         status=issue.status,
         house_id=issue.house_id,
-        address=issue.house.address if issue.house else None,
+        address=issue.house.address if issue.house else issue.custom_address,
         location_details=issue.location_details,
         photos=[
             IssuePhoto(id=uuid.UUID(p), url=photos.photo_url(uuid.UUID(p))) for p in issue.photo_ids
@@ -41,6 +43,7 @@ def to_read(issue: Issue) -> IssueRead:
         escalation_level=issue.escalation_level,
         parent_issue_id=issue.parent_issue_id,
         draft=Draft(full=issue.draft_full, pos_short=issue.draft_pos_short),
+        missing_applicant_fields=missing_fields(issue.draft_full),
         external_ref=issue.external_ref,
         submitted_at=issue.submitted_at,
         deadline_at=issue.deadline_at,
@@ -62,17 +65,35 @@ async def list_issues(session: AsyncSession, user_id: uuid.UUID) -> list[IssueRe
     return [to_read(i) for i in found]
 
 
-def _company_for(user: User, house: House | None) -> ManagementCompany | None:
-    """УК из профиля действует для дома из профиля; для другого дома берётся УК этого дома."""
-    if house is None or house.id == user.house_id:
-        return user.management_company or (house.management_company if house else None)
-    return house.management_company
+@dataclass(frozen=True)
+class Place:
+    house: House | None
+    address: str | None
+    company: ManagementCompany | None
 
 
-async def _issue_house(session: AsyncSession, user: User, house_id: int | None) -> House | None:
-    if house_id is not None:
-        return await houses.get_house(session, house_id)
-    return user.house
+def _profile_company(user: User) -> ManagementCompany | None:
+    if user.management_company:
+        return user.management_company
+    return routing.custom_company(user.custom_company_name) if user.custom_company_name else None
+
+
+async def resolve_place(
+    session: AsyncSession, user: User, house_id: int | None, custom_address: str | None
+) -> Place:
+    """Дом (из справочника или введённый вручную) и УК для него.
+
+    Без дома в запросе берётся дом из профиля. УК из профиля действует только для места из
+    профиля; для другого дома берётся УК этого дома, для другого введённого адреса УК неизвестна.
+    """
+    if house_id is None and not custom_address:
+        house_id, custom_address = user.house_id, user.custom_address
+    house = await houses.get_house(session, house_id) if house_id is not None else None
+    own = (house_id, custom_address) == (user.house_id, user.custom_address)
+    company = (_profile_company(user) if own else None) or (
+        house.management_company if house else None
+    )
+    return Place(house, house.address if house else custom_address, company)
 
 
 async def create_issue(
@@ -80,22 +101,27 @@ async def create_issue(
 ) -> Issue:
     for photo_id in data.photo_ids:
         await photos.get_owned_photo(session, user.id, photo_id)
-    house = await _issue_house(session, user, data.house_id)
+    place = await resolve_place(session, user, data.house_id, data.custom_address)
     hint = await analysis.recalculation_hint(session, user.id)
     route = routing.build_route(
-        data.category, data.answers, data.already_contacted_uk, _company_for(user, house), hint
+        data.category, data.answers, data.already_contacted_uk, place.company, hint
     )
-    summary = await drafts.build_summary(llm, data.category, data.answers)
-    address = house.address if house else None
+    summary = await drafts.build_summary(llm, data.category, data.answers, route.addressee)
     draft = drafts.build_draft(
-        summary, route, address, data.location_details, len(data.photo_ids), applicant_line(user)
+        summary,
+        route,
+        place.address,
+        data.location_details,
+        len(data.photo_ids),
+        applicant_line(user),
     )
     issue = Issue(
         user_id=user.id,
         category=data.category,
         answers=data.answers,
         already_contacted_uk=data.already_contacted_uk,
-        house_id=house.id if house else None,
+        house_id=place.house.id if place.house else None,
+        custom_address=None if place.house else place.address,
         location_details=data.location_details,
         photo_ids=[str(p) for p in data.photo_ids],
         addressee_key=route.addressee.key,
@@ -135,6 +161,18 @@ async def patch_issue(
     return issue
 
 
+async def refresh_letter(session: AsyncSession, user: User, issue_id: uuid.UUID) -> Issue:
+    """Подставляет в строку «От:» текущие данные профиля; правки текста письма не трогает."""
+    issue = await get_issue(session, user.id, issue_id)
+    if issue.status != IssueStatus.DRAFT:
+        raise Conflict("Письмо можно обновить только в черновике", "not_a_draft")
+    issue.draft_full = re.sub(
+        r"^От: .*$", lambda _: f"От: {applicant_line(user)}", issue.draft_full, count=1, flags=re.M
+    )
+    await session.commit()
+    return issue
+
+
 def _previous(parent: Issue, route: RouteResult) -> dict:
     return {
         "addressee_name": route.addressee.name,
@@ -147,12 +185,15 @@ async def escalate_issue(session: AsyncSession, user: User, issue_id: uuid.UUID)
     """Новое обращение на следующую ступень лестницы исходного."""
     parent = await get_issue(session, user.id, issue_id)
     parent_route = RouteResult.model_validate(parent.route)
-    route = routing.build_escalated_route(parent_route, _company_for(user, parent.house))
+    place = await resolve_place(session, user, parent.house_id, parent.custom_address)
+    route = routing.build_escalated_route(parent_route, place.company)
     if route is None:
         raise Conflict("Дальше эскалировать некуда: ступени закончились", "no_escalation_left")
-    address = parent.house.address if parent.house else None
+    summary = parent.summary
+    if not drafts.summary_fits(summary, route.addressee.key):
+        summary = await drafts.build_summary(None, parent.category, parent.answers, route.addressee)
     draft = drafts.build_escalation_draft(
-        parent.summary, route, address, parent.location_details, len(parent.photo_ids),
+        summary, route, place.address, parent.location_details, len(parent.photo_ids),
         applicant_line(user), _previous(parent, parent_route),
     )  # fmt: skip
     issue = Issue(
@@ -161,9 +202,10 @@ async def escalate_issue(session: AsyncSession, user: User, issue_id: uuid.UUID)
         answers=parent.answers,
         already_contacted_uk=parent.already_contacted_uk,
         house_id=parent.house_id,
+        custom_address=parent.custom_address,
         location_details=parent.location_details,
         photo_ids=parent.photo_ids,
-        summary=parent.summary,
+        summary=summary,
         parent_issue_id=parent.id,
         escalation_level=parent.escalation_level + 1,
         addressee_key=route.addressee.key,

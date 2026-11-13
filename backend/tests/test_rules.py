@@ -160,3 +160,29 @@ def test_every_route_of_every_category_is_reachable(cat):
         assert matched_index <= i, (cat, i)
         assert decision.addressee_key in ADDRESSEES
         assert decision.basis or cat == "other"
+
+
+def uk_rules_with_ladder():
+    """(категория, ответы, правило) для каждого правила с адресатом УК и лестницей."""
+    found = []
+    for category, r in RULES.items():
+        for index, rule in enumerate([*(r.get("routes") or []), r["default"]]):
+            if rule["addressee"] == "managing_company" and rule.get("escalation"):
+                answers = _answers_for(rule.get("when") or {})
+                found.append(pytest.param(category, answers, rule, id=f"{category}-{index}"))
+    return found
+
+
+@pytest.mark.parametrize(("category", "answers", "rule"), uk_rules_with_ladder())
+def test_already_contacted_uk_shifts_to_first_escalation_step(category, answers, rule):
+    decision = decide(RULES[category], answers, already_contacted_uk=True)
+    assert decision.shifted and decision.addressee_key == rule["escalation"][0]
+    assert decision.escalation == rule["escalation"][1:]
+
+
+def test_already_contacted_uk_does_not_change_other_addressees():
+    for r in RULES.values():
+        for rule in [*(r.get("routes") or []), r["default"]]:
+            if rule["addressee"] != "managing_company":
+                answers = _answers_for(rule.get("when") or {})
+                assert not decide(r, answers, already_contacted_uk=True).shifted

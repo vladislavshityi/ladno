@@ -48,6 +48,7 @@ class Issue(Base):
     house_id: Mapped[int | None] = mapped_column(
         ForeignKey("houses.id", ondelete="SET NULL"), index=True
     )
+    custom_address: Mapped[str | None] = mapped_column(String(500))
     location_details: Mapped[str | None] = mapped_column(String(300))
     photo_ids: Mapped[list[str]] = mapped_column(JSONB, default=list)
 

@@ -18,6 +18,10 @@ def to_read(user: User) -> UserRead:
     current = get_settings().consent_version
     read = UserRead.model_validate(user)
     read.consent_required = user.consent_version != current
+    company = read.management_company
+    house_company = read.house.management_company if read.house else None
+    if company and house_company and company.id == house_company.id:
+        company.source = house_company.source
     return read
 
 
@@ -26,9 +30,10 @@ async def update_profile(session: AsyncSession, user: User, data: ProfileUpdate)
     company_id = data.management_company_id
     if company_id is not None:
         await houses.get_company(session, company_id)
-    elif house is not None:
+    elif house is not None and not data.custom_company_name:
         company_id = house.management_company_id
     user.house, user.entrance = house, data.entrance
+    user.custom_address, user.custom_company_name = data.custom_address, data.custom_company_name
     user.full_name, user.phone = data.full_name, data.phone
     user.email, user.apartment = data.email, data.apartment
     user.management_company_id = company_id

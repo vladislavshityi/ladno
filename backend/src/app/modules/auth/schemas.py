@@ -2,14 +2,16 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.schemas import ApiModel
 from app.modules.users.schemas import UserRead
 
 
-class AuthConfig(BaseModel):
+class AuthConfig(ApiModel):
     telegram_bot_username: str = Field(description="Имя бота для Telegram Login Widget, без @")
     dev_login_enabled: bool = Field(
         description="Доступен ли вход без Telegram (только APP_ENV=dev)"
     )
+    consent_version: str = Field(description="Текущая версия согласия на обработку данных")
 
 
 class TelegramWidgetLogin(BaseModel):
@@ -35,7 +37,7 @@ class DevLogin(BaseModel):
     first_name: str | None = "Тест"
 
 
-class TokenResponse(BaseModel):
+class TokenResponse(ApiModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
     user: UserRead

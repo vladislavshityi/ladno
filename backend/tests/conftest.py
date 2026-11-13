@@ -15,6 +15,7 @@ os.environ.update(
         "LLM_API_KEY": "",
         "LLM_MODEL": "",
         "TELEGRAM_BOT_TOKEN": "123456:TEST-TOKEN",
+        "TELEGRAM_BOT_USERNAME": "",
         "BOT_API_TOKEN": "test-bot-token",
         "UPLOAD_DIR": tempfile.mkdtemp(prefix="ladno-test-uploads-"),
     }

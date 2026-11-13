@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 import httpx
 import pytest
 
+from app.core.config import get_settings
 from tests.conftest import Account, dev_login
 from tests.test_telegram import sign_webapp, sign_widget
 
@@ -17,7 +18,11 @@ def now_fields(**over: str) -> dict[str, str]:
 
 async def test_config(client: httpx.AsyncClient):
     body = (await client.get("/auth/config")).json()
-    assert body == {"telegram_bot_username": "", "dev_login_enabled": True}
+    assert body == {
+        "telegram_bot_username": "",
+        "dev_login_enabled": True,
+        "consent_version": get_settings().consent_version,
+    }
 
 
 async def test_dev_login_and_me(client: httpx.AsyncClient, newcomer: Account):

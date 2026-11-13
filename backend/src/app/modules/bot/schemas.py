@@ -1,12 +1,11 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
-
+from app.core.schemas import ApiModel
 from app.modules.issues.models import IssueStatus
 
 
-class BotIssue(BaseModel):
+class BotIssue(ApiModel):
     id: uuid.UUID
     category_title: str
     status: IssueStatus
@@ -15,7 +14,7 @@ class BotIssue(BaseModel):
     is_overdue: bool = False
 
 
-class Reminder(BaseModel):
+class Reminder(ApiModel):
     issue_id: uuid.UUID
     telegram_id: int
     category_title: str

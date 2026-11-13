@@ -50,9 +50,9 @@ async def classify(
 async def get_route(data: RouteRequest, user: CurrentUser, session: SessionDep) -> RouteResult:
     """Адресат, основания, сроки и лестница эскалации по правилам региона."""
     hint = await analysis.recalculation_hint(session, user.id)
-    company = user.management_company
+    place = await service.resolve_place(session, user, data.house_id, data.custom_address)
     return routing.build_route(
-        data.category, data.answers, data.already_contacted_uk, company, hint
+        data.category, data.answers, data.already_contacted_uk, place.company, hint
     )
 
 
@@ -80,6 +80,14 @@ async def patch_issue(
     """Правка черновика, номера обращения и статуса. Статус submitted запускает отсчёт срока."""
     issue = await service.patch_issue(session, user.id, issue_id, data)
     return service.to_read(issue)
+
+
+@router.post("/issues/{issue_id}/refresh-letter", response_model=IssueRead)
+async def refresh_letter(
+    issue_id: uuid.UUID, user: ConsentedUser, session: SessionDep
+) -> IssueRead:
+    """Пересобирает строку «От:» черновика из текущего профиля, без языковой модели."""
+    return service.to_read(await service.refresh_letter(session, user, issue_id))
 
 
 @router.get("/issues/{issue_id}/submission", response_model=Submission)
