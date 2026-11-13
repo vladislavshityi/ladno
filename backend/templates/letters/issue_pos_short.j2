@@ -1,0 +1,11 @@
+{{ summary }}
+{% if previous %}
+ Повторное обращение, ранее{% if previous.ref %}: № {{ previous.ref }}{% endif %}.
+{% endif %}
+{% if address %}
+ Адрес: {{ address }}{% if location_details %}, {{ location_details }}{% endif %}.
+{% endif %}
+ Прошу устранить проблему и сообщить о результате.
+{% if basis %}
+ Основание: {{ basis|map(attribute='source')|unique|join(', ') }}.
+{% endif %}

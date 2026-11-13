@@ -1,0 +1,100 @@
+{
+  "title": "Ноябрь 2026 (пример)",
+  "period": "2026-11",
+  "management_company": {
+    "name": "ООО «УПРАВЛЯЮЩАЯ КОМПАНИЯ ЛЕНИНСКОГО РАЙОНА»",
+    "inn": "2540111333"
+  },
+  "address": "г Владивосток, ул Светланская, д 10",
+  "account_last4": "7305",
+  "area_m2": "54.30",
+  "residents": 3,
+  "lines": [
+    {
+      "service_code": "maintenance",
+      "service_name": "Содержание жилого помещения",
+      "unit": "м2",
+      "volume": "54.30",
+      "tariff": "32.50",
+      "accrued": "1764.75",
+      "recalculation": "0.00",
+      "total": "1764.75",
+      "method": "norm",
+      "id": 1
+    },
+    {
+      "service_code": "cold_water",
+      "service_name": "Холодное водоснабжение",
+      "unit": "м3",
+      "volume": "8.30",
+      "tariff": "53.4360",
+      "accrued": "443.52",
+      "recalculation": "0.00",
+      "total": "443.52",
+      "method": "meter",
+      "id": 2
+    },
+    {
+      "service_code": "hot_water",
+      "service_name": "Горячее водоснабжение",
+      "unit": "м3",
+      "volume": "6.90",
+      "tariff": "269.40",
+      "accrued": "1858.86",
+      "recalculation": "0.00",
+      "total": "1858.86",
+      "method": "norm_increased",
+      "id": 3
+    },
+    {
+      "service_code": "sewerage",
+      "service_name": "Водоотведение",
+      "unit": "м3",
+      "volume": "12.90",
+      "tariff": "41.6752",
+      "accrued": "537.61",
+      "recalculation": "0.00",
+      "total": "537.61",
+      "method": "meter",
+      "id": 4
+    },
+    {
+      "service_code": "heating",
+      "service_name": "Отопление",
+      "unit": "Гкал",
+      "volume": "1.520",
+      "tariff": "3348.92",
+      "accrued": "5090.36",
+      "recalculation": "0.00",
+      "total": "5090.36",
+      "method": "meter",
+      "id": 5
+    },
+    {
+      "service_code": "electricity",
+      "service_name": "Электроэнергия",
+      "unit": "кВт.ч",
+      "volume": "205",
+      "tariff": "6.46",
+      "accrued": "1324.30",
+      "recalculation": "0.00",
+      "total": "1324.30",
+      "method": "meter",
+      "id": 6
+    },
+    {
+      "service_code": "waste",
+      "service_name": "Обращение с ТКО",
+      "unit": "м2",
+      "volume": "54.30",
+      "tariff": "4.69",
+      "accrued": "254.67",
+      "recalculation": "0.00",
+      "total": "254.67",
+      "method": "norm",
+      "id": 7
+    }
+  ],
+  "total": "11274.07",
+  "demo_note": "Демо-квитанция: тарифы услуг из tariffs.yaml, объёмы условные; ставка содержания жилья условная (её утверждают собственники дома), УК и дом взяты из справочников без реальной связки."
+}

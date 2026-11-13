@@ -1,0 +1,304 @@
+# Первое совпавшее правило побеждает; `default` обязателен для каждой категории.
+# Все нормы verified: false — человек сверяет с первоисточником перед демо.
+stairwell_lighting:
+  questions:
+    - id: duration
+      text: "Как давно нет света?"
+      options:
+        - { value: days_few, label: "Несколько дней" }
+        - { value: week_plus, label: "Больше недели" }
+    - id: scope
+      text: "Что именно не работает?"
+      options:
+        - { value: one_lamp, label: "Одна лампа" }
+        - { value: floor, label: "Освещение на этаже" }
+        - { value: whole_entrance, label: "Во всём подъезде" }
+  routes:
+    - when: { scope: whole_entrance }
+      addressee: managing_company
+      explanation: "Освещение всего подъезда — общее имущество, содержит УК; ситуация требует быстрого устранения."
+      basis:
+        - { text: "Освещение мест общего пользования входит в состав общего имущества МКД", source: "ПП РФ № 491", verified: false }
+        - { text: "Обеспечение освещения подъездов — обязанность управляющей организации", source: "ПП РФ № 290", verified: false }
+      response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+      fix_deadline: { days: 1, type: calendar, source: "ПП РФ № 290", verified: false }
+      escalation: [housing_inspection, prosecutor]
+    - when: { duration: week_plus }
+      addressee: managing_company
+      explanation: "Лампы не заменяют больше недели — это нарушение сроков устранения неисправностей, можно сразу требовать ответа и ссылаться на ГЖИ."
+      basis:
+        - { text: "Освещение мест общего пользования — общее имущество МКД", source: "ПП РФ № 491", verified: false }
+        - { text: "Замена перегоревших ламп в местах общего пользования — в течение 3 суток", source: "ПП РФ № 290", verified: false }
+      response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+      fix_deadline: { days: 3, type: calendar, source: "ПП РФ № 290", verified: false }
+      escalation: [housing_inspection, prosecutor]
+    - when: { scope: [one_lamp, floor] }
+      addressee: managing_company
+      explanation: "Замена ламп в подъезде — обязанность УК."
+      basis:
+        - { text: "Освещение мест общего пользования — общее имущество МКД", source: "ПП РФ № 491", verified: false }
+      response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+      fix_deadline: { days: 7, type: calendar, source: "ПП РФ № 290", verified: false }
+      escalation: [housing_inspection, prosecutor]
+  default:
+    addressee: managing_company
+    explanation: "Освещение подъезда содержит управляющая организация."
+    basis:
+      - { text: "Освещение мест общего пользования — общее имущество МКД", source: "ПП РФ № 491", verified: false }
+    response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+    escalation: [housing_inspection, prosecutor]
+
+graffiti:
+  questions:
+    - id: place
+      text: "Где находится граффити?"
+      options:
+        - { value: entrance, label: "В подъезде" }
+        - { value: house_facade, label: "На фасаде дома" }
+        - { value: stop, label: "На остановке" }
+        - { value: city_object, label: "На другом городском объекте" }
+  routes:
+    - when: { place: [entrance, house_facade] }
+      addressee: managing_company
+      explanation: "Подъезд и фасад дома — общее имущество, за чистоту отвечает УК."
+      basis:
+        - { text: "Фасады и стены подъездов — общее имущество МКД", source: "ПП РФ № 491", verified: false }
+        - { text: "Поддержание надлежащего внешнего вида фасадов", source: "ПП РФ № 170", verified: false }
+      response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+      escalation: [housing_inspection, police]
+    - when: { place: [stop, city_object] }
+      addressee: city_admin
+      explanation: "Остановки и городские объекты находятся в ведении города."
+      basis:
+        - { text: "Благоустройство территории — полномочие городского округа", source: "131-ФЗ", verified: false }
+        - { text: "Правила благоустройства Владивостока", source: "Решение Думы г. Владивостока", verified: false }
+      response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+      escalation: [police, prosecutor]
+  default:
+    addressee: pos
+    explanation: "Не удалось определить ответственного — отправьте через «Решаем вместе»."
+    basis: []
+    response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+    escalation: [prosecutor]
+
+pothole:
+  questions:
+    - id: place
+      text: "Где яма?"
+      options:
+        - { value: yard, label: "Во дворе дома" }
+        - { value: road, label: "На проезжей части улицы" }
+        - { value: sidewalk, label: "На тротуаре" }
+        - { value: unknown, label: "Не знаю" }
+  routes:
+    - when: { place: yard }
+      addressee: managing_company
+      explanation: "Двор — придомовая территория, её содержит УК."
+      basis:
+        - { text: "Придомовая территория в составе общего имущества МКД", source: "ПП РФ № 491", verified: false }
+      response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+      escalation: [housing_inspection, prosecutor]
+    - when: { place: [road, sidewalk] }
+      addressee: city_roads
+      explanation: "Дороги местного значения содержит город."
+      basis:
+        - { text: "Содержание дорог местного значения — полномочие городского округа", source: "131-ФЗ", verified: false }
+        - { text: "Требования к выбоинам на дорогах", source: "ГОСТ Р 50597-2017", verified: false }
+      response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+      escalation: [traffic_police, prosecutor]
+  default:
+    addressee: pos
+    explanation: "Принадлежность участка неясна — отправьте через «Решаем вместе», обращение перенаправят."
+    basis: []
+    response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+    escalation: [prosecutor]
+
+stairwell_cleaning:
+  questions:
+    - id: duration
+      text: "Как давно не убирают?"
+      options:
+        - { value: days_few, label: "Несколько дней" }
+        - { value: week_plus, label: "Больше недели" }
+  default:
+    addressee: managing_company
+    explanation: "Уборка подъездов входит в содержание общего имущества."
+    basis:
+      - { text: "Санитарное содержание мест общего пользования", source: "ПП РФ № 290", verified: false }
+    response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+    escalation: [housing_inspection, prosecutor]
+
+elevator:
+  questions:
+    - id: stuck
+      text: "Есть ли человек в застрявшем лифте?"
+      options:
+        - { value: "yes", label: "Да, кто-то застрял" }
+        - { value: "no", label: "Нет, лифт просто не работает" }
+  routes:
+    - when: { stuck: "yes" }
+      addressee: edds
+      explanation: "Застрявший человек — авария, звоните в ЕДДС (или в диспетчерскую лифтов УК)."
+      basis:
+        - { text: "Обязанность организации обеспечить аварийное обслуживание лифтов", source: "ТР ТС 011/2011", verified: false }
+      response_deadline: { days: 1, type: calendar, source: "ТР ТС 011/2011", verified: false }
+      escalation: [housing_inspection]
+  default:
+    addressee: managing_company
+    explanation: "Содержание и ремонт лифтов — обязанность УК."
+    basis:
+      - { text: "Лифты — общее имущество МКД", source: "ПП РФ № 491", verified: false }
+    response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+    escalation: [housing_inspection, prosecutor]
+
+entrance_door:
+  questions: []
+  default:
+    addressee: managing_company
+    explanation: "Входная дверь и домофон — общее имущество, содержит УК."
+    basis:
+      - { text: "Двери и запирающие устройства — общее имущество МКД", source: "ПП РФ № 491", verified: false }
+    response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+    escalation: [housing_inspection, prosecutor]
+
+roof_leak:
+  questions:
+    - id: active
+      text: "Вода течёт прямо сейчас?"
+      options:
+        - { value: "yes", label: "Да, течёт" }
+        - { value: "no", label: "Нет, следы протечки" }
+  default:
+    addressee: managing_company
+    explanation: "Кровля — общее имущество, её ремонт обязана организовать УК."
+    basis:
+      - { text: "Крыши — общее имущество МКД", source: "ПП РФ № 491", verified: false }
+      - { text: "Устранение протечек кровли — в течение 1 суток", source: "ПП РФ № 170", verified: false }
+    response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+    fix_deadline: { days: 1, type: calendar, source: "ПП РФ № 170", verified: false }
+    escalation: [housing_inspection, prosecutor]
+
+garbage:
+  questions:
+    - id: place
+      text: "Где проблема?"
+      options:
+        - { value: yard_bins, label: "Контейнерная площадка во дворе" }
+        - { value: not_removed, label: "Мусор не вывозят" }
+        - { value: dump, label: "Стихийная свалка" }
+  routes:
+    - when: { place: not_removed }
+      addressee: peo
+      explanation: "Вывоз ТКО обеспечивает региональный оператор."
+      basis:
+        - { text: "Обращение с ТКО — обязанность регионального оператора", source: "89-ФЗ", verified: false }
+      response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+      escalation: [housing_inspection, prosecutor]
+    - when: { place: dump }
+      addressee: city_admin
+      explanation: "Стихийные свалки на городских землях — ответственность города."
+      basis:
+        - { text: "Благоустройство территории — полномочие городского округа", source: "131-ФЗ", verified: false }
+      response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+      escalation: [prosecutor]
+  default:
+    addressee: managing_company
+    explanation: "Содержание площадки для контейнеров — обязанность УК."
+    basis:
+      - { text: "Содержание придомовой территории и контейнерных площадок", source: "ПП РФ № 491", verified: false }
+    response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+    escalation: [housing_inspection, prosecutor]
+
+snow_ice:
+  questions:
+    - id: place
+      text: "Где снег или наледь?"
+      options:
+        - { value: yard, label: "Во дворе дома" }
+        - { value: roof, label: "На крыше (сосульки)" }
+        - { value: street, label: "На улице / тротуаре" }
+  routes:
+    - when: { place: street }
+      addressee: city_admin
+      explanation: "Уборка улиц и тротуаров — полномочие города."
+      basis:
+        - { text: "Благоустройство территории — полномочие городского округа", source: "131-ФЗ", verified: false }
+      response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+      escalation: [prosecutor]
+  default:
+    addressee: managing_company
+    explanation: "Уборка двора и крыши от снега и наледи — обязанность УК."
+    basis:
+      - { text: "Уборка придомовой территории и удаление наледи с крыш", source: "ПП РФ № 290", verified: false }
+    response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+    escalation: [housing_inspection, prosecutor]
+
+open_manhole:
+  questions:
+    - id: place
+      text: "Где открытый люк?"
+      options:
+        - { value: road, label: "На проезжей части" }
+        - { value: yard, label: "Во дворе" }
+  routes:
+    - when: { place: road }
+      addressee: edds
+      explanation: "Открытый люк на проезжей части — угроза жизни, сообщите в ЕДДС и ограничьте опасное место."
+      basis:
+        - { text: "Содержание дорог местного значения — полномочие городского округа", source: "131-ФЗ", verified: false }
+      response_deadline: { days: 1, type: calendar, source: "Аварийная ситуация", verified: false }
+      escalation: [traffic_police, city_roads]
+  default:
+    addressee: managing_company
+    explanation: "Люк во дворе — на УК; при угрозе жизни звоните в ЕДДС."
+    basis:
+      - { text: "Придомовая территория — общее имущество МКД", source: "ПП РФ № 491", verified: false }
+    response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+    escalation: [edds, housing_inspection]
+
+utility_outage:
+  questions:
+    - id: resource
+      text: "Чего нет?"
+      options:
+        - { value: electricity, label: "Электричества" }
+        - { value: cold_water, label: "Холодной воды" }
+        - { value: heating, label: "Отопления или горячей воды" }
+  routes:
+    - when: { resource: electricity }
+      addressee: vpes
+      explanation: "Электроснабжение обеспечивает ресурсоснабжающая организация."
+      basis:
+        - { text: "Предоставление коммунальных услуг надлежащего качества", source: "ПП РФ № 354", verified: false }
+      response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+      escalation: [edds, housing_inspection]
+    - when: { resource: cold_water }
+      addressee: primvodokanal
+      explanation: "Водоснабжение обеспечивает ресурсоснабжающая организация."
+      basis:
+        - { text: "Предоставление коммунальных услуг надлежащего качества", source: "ПП РФ № 354", verified: false }
+      response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+      escalation: [edds, housing_inspection]
+    - when: { resource: heating }
+      addressee: dgk
+      explanation: "Тепло и горячую воду поставляет ресурсоснабжающая организация."
+      basis:
+        - { text: "Предоставление коммунальных услуг надлежащего качества", source: "ПП РФ № 354", verified: false }
+      response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+      escalation: [edds, housing_inspection]
+  default:
+    addressee: managing_company
+    explanation: "Если неясно, кто виноват, начните с УК."
+    basis:
+      - { text: "Исполнитель коммунальных услуг отвечает за их предоставление", source: "ПП РФ № 354", verified: false }
+    response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+    escalation: [edds, housing_inspection]
+
+other:
+  questions: []
+  default:
+    addressee: pos
+    explanation: "Для нестандартных проблем подходит платформа «Решаем вместе»."
+    basis: []
+    response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+    escalation: [prosecutor]

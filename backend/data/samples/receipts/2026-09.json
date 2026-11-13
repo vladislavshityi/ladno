@@ -1,0 +1,88 @@
+{
+  "title": "Сентябрь 2026 (пример)",
+  "period": "2026-09",
+  "management_company": {
+    "name": "ООО «УПРАВЛЯЮЩАЯ КОМПАНИЯ ЛЕНИНСКОГО РАЙОНА»",
+    "inn": "2540111333"
+  },
+  "address": "г Владивосток, ул Светланская, д 10",
+  "account_last4": "7305",
+  "area_m2": "54.30",
+  "residents": 3,
+  "lines": [
+    {
+      "service_code": "maintenance",
+      "service_name": "Содержание жилого помещения",
+      "unit": "м2",
+      "volume": "54.30",
+      "tariff": "32.50",
+      "accrued": "1764.75",
+      "recalculation": "0.00",
+      "total": "1764.75",
+      "method": "norm",
+      "id": 1
+    },
+    {
+      "service_code": "cold_water",
+      "service_name": "Холодное водоснабжение",
+      "unit": "м3",
+      "volume": "7.90",
+      "tariff": "46.8724",
+      "accrued": "370.29",
+      "recalculation": "0.00",
+      "total": "370.29",
+      "method": "meter",
+      "id": 2
+    },
+    {
+      "service_code": "hot_water",
+      "service_name": "Горячее водоснабжение",
+      "unit": "м3",
+      "volume": "4.30",
+      "tariff": "252.40",
+      "accrued": "1085.32",
+      "recalculation": "0.00",
+      "total": "1085.32",
+      "method": "meter",
+      "id": 3
+    },
+    {
+      "service_code": "sewerage",
+      "service_name": "Водоотведение",
+      "unit": "м3",
+      "volume": "12.20",
+      "tariff": "35.7582",
+      "accrued": "436.25",
+      "recalculation": "0.00",
+      "total": "436.25",
+      "method": "meter",
+      "id": 4
+    },
+    {
+      "service_code": "electricity",
+      "service_name": "Электроэнергия",
+      "unit": "кВт.ч",
+      "volume": "165",
+      "tariff": "5.81",
+      "accrued": "958.65",
+      "recalculation": "0.00",
+      "total": "958.65",
+      "method": "meter",
+      "id": 5
+    },
+    {
+      "service_code": "waste",
+      "service_name": "Обращение с ТКО",
+      "unit": "м2",
+      "volume": "54.30",
+      "tariff": "4.46",
+      "accrued": "242.18",
+      "recalculation": "0.00",
+      "total": "242.18",
+      "method": "norm",
+      "id": 6
+    }
+  ],
+  "total": "4857.44",
+  "demo_note": "Демо-квитанция: тарифы услуг из tariffs.yaml, объёмы условные; ставка содержания жилья условная (её утверждают собственники дома), УК и дом взяты из справочников без реальной связки."
+}

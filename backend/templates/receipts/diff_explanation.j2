@@ -1,0 +1,11 @@
+{% if unchanged %}
+Итог квитанции не изменился: {{ total_target }} ₽.
+{% else %}
+Квитанция {{ "выросла" if growing else "уменьшилась" }} на {{ delta_abs }} ₽: было {{ total_base }} ₽, стало {{ total_target }} ₽.
+{% endif %}
+{% for item in items %}
+{{ item.name }}: {{ item.delta }} ₽, {{ item.reason }}.
+{% endfor %}
+{% for note in notes %}
+{{ note }}
+{% endfor %}

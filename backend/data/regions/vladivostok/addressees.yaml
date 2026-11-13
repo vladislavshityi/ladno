@@ -1,0 +1,122 @@
+# Контакты сверены 2026-11-13 с официальными страницами (см. source у каждого адресата).
+# channels[].type: phone | email | url | pos | gis_zhkh | telegram
+managing_company:
+  name: "УК / ТСЖ дома"   # виртуальный ключ: подставляется из профиля (из профиля жителя)
+  kind: managing_company
+  channels: []
+  notes: "Данные УК берутся из профиля пользователя; если неизвестна — канал ПОС."
+city_admin:
+  name: "Администрация г. Владивостока"
+  kind: city
+  response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+  channels:
+    - { type: url, value: "http://letter.vlc.ru/ru/appeal/forms", label: "Интернет-приёмная администрации" }
+    - { type: pos, value: "https://pos.gosuslugi.ru/", label: "Решаем вместе" }
+  notes: "Благоустройство, остановки, городские объекты. Почтовый адрес: Океанский пр., 20, Владивосток, 690091."
+  source: "https://www.vlc.ru/contacts/"
+city_roads:
+  name: "Управление дорог администрации г. Владивостока"
+  kind: city
+  response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+  channels:
+    - { type: url, value: "http://letter.vlc.ru/ru/appeal/forms", label: "Интернет-приёмная администрации" }
+    - { type: pos, value: "https://pos.gosuslugi.ru/", label: "Решаем вместе" }
+  notes: "Дороги и тротуары местного значения. Отдельной формы у управления на vlc.ru нет, обращения идут через интернет-приёмную администрации."
+  source: "https://www.vlc.ru/contacts/"
+edds:
+  name: "ЕДДС Владивостока"
+  kind: emergency
+  response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+  channels:
+    - { type: phone, value: "+7 423 222-23-33", label: "Диспетчер ЕДДС" }
+    - { type: phone, value: "112", label: "Единый номер экстренных служб" }
+  notes: "Аварии и угроза жизни. МКУ «ЕДДС города Владивостока»."
+  source: "https://www.vlc.ru/contacts/"
+housing_inspection:
+  name: "Государственная жилищная инспекция Приморского края"
+  kind: region
+  response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+  channels:
+    - { type: phone, value: "+7 423 243-26-40", label: "Приёмная ГЖИ" }
+    - { type: phone, value: "+7 423 243-26-32", label: "Горячая линия ГЖИ" }
+    - { type: email, value: "gji_pk@primorsky.ru", label: "Электронная почта ГЖИ" }
+    - { type: url, value: "https://primorsky.ru/authorities/executive-agencies/offices/housing-supervision/", label: "Страница ГЖИ на primorsky.ru" }
+  notes: "Контроль управляющих организаций. Страница primorsky.ru отдаёт 403 автоматическим запросам: телефоны и e-mail взяты из поисковой выдачи по этой странице, сверить вручную."
+  source: "https://primorsky.ru/authorities/executive-agencies/offices/housing-supervision/"
+traffic_police:
+  name: "ГИБДД (Госавтоинспекция)"
+  kind: federal
+  response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+  channels:
+    - { type: url, value: "https://гибдд.рф/request_main", label: "Обращение на сайте ГИБДД" }
+  notes: "Надзор за состоянием дорог. Ссылка не открылась при автоматической проверке (2026-11-13), сверить вручную."
+  source: "https://гибдд.рф/request_main"
+police:
+  name: "Полиция"
+  kind: federal
+  response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+  channels:
+    - { type: phone, value: "112", label: "Экстренный вызов" }
+    - { type: url, value: "https://мвд.рф/request_main", label: "Обращение на сайте МВД" }
+  notes: "Ссылка не открылась при автоматической проверке (2026-11-13), сверить вручную."
+  source: "https://мвд.рф/request_main"
+prosecutor:
+  name: "Прокуратура Приморского края"
+  kind: federal
+  response_deadline: { days: 30, type: calendar, source: "59-ФЗ", verified: false }
+  channels:
+    - { type: url, value: "https://epp.genproc.gov.ru/ru/proc_25/internet-reception/", label: "Интернет-приёмная прокуратуры Приморского края" }
+    - { type: phone, value: "+7 423 240-62-04", label: "Отдел по работе с обращениями граждан" }
+  notes: "Океанский пр., 19, литер А, Владивосток, 690091."
+  source: "https://epp.genproc.gov.ru/ru/proc_25/contacts/"
+pos:
+  name: "Решаем вместе"
+  kind: pos
+  channels:
+    - { type: pos, value: "https://pos.gosuslugi.ru/", label: "Решаем вместе" }
+  notes: "Платформа обратной связи; подача через неё вручную. Недоступна из тестовой сети, ссылка общеизвестная."
+  source: "https://pos.gosuslugi.ru/"
+vpes:
+  name: "АО «ВПЭС» (Владивостокские электрические сети)"
+  kind: emergency
+  channels:
+    - { type: phone, value: "+7 423 236-27-73", label: "Центральная диспетчерская электросетей (круглосуточно)" }
+    - { type: phone, value: "+7 423 209-90-00", label: "Единый контактный центр" }
+    - { type: phone, value: "+7 423 241-18-25", label: "Наружное освещение, диспетчерская" }
+    - { type: pos, value: "https://pos.gosuslugi.ru/", label: "Решаем вместе" }
+  notes: "Электроснабжение, уличное освещение."
+  source: "https://vpes.ru/company/dispetcherskie-sluzhby/"
+primvodokanal:
+  name: "КГУП «Приморский водоканал»"
+  kind: emergency
+  channels:
+    - { type: phone, value: "+7 423 200-57-77", label: "Единый телефон / диспетчерская" }
+    - { type: email, value: "prim@primvoda.ru", label: "Электронная почта" }
+    - { type: pos, value: "https://pos.gosuslugi.ru/", label: "Решаем вместе" }
+  notes: "Водоснабжение и водоотведение. Офис: ул. Некрасовская, 122."
+  source: "https://primvoda.ru/"
+dgk:
+  name: "АО «ДГК», филиал «Приморская генерация»"
+  kind: emergency
+  channels:
+    - { type: phone, value: "8-800-234-77-77", label: "Единая справочная ДГК (бесплатно)" }
+    - { type: pos, value: "https://pos.gosuslugi.ru/", label: "Решаем вместе" }
+  notes: "Отопление и горячая вода. Отдельного номера аварийной диспетчерской на сайте ДГК не найдено: единая справочная 8-800-234-77-77."
+  source: "https://dvgk.ru/klientam/kontakty-dlya-obrashcheniy-potrebiteley/tsentry-ochnogo-obsluzhivaniya/primorskiy-kray-571/primorskiy-kray-fizicheskie-litsa/"
+peo:
+  name: "КГУП «Приморский экологический оператор»"
+  kind: region
+  channels:
+    - { type: phone, value: "+7 423 246-72-22", label: "Диспетчерская по вывозу отходов" }
+    - { type: phone, value: "+7 423 232-56-81", label: "Приёмная" }
+    - { type: email, value: "zayavka.tko@spzv.ru", label: "Заявки по вывозу ТКО" }
+    - { type: pos, value: "https://pos.gosuslugi.ru/", label: "Решаем вместе" }
+  notes: "Вывоз ТКО. Офис: ул. Тухачевского, 48А."
+  source: "https://spzv.ru/kontaktyi"
+gas_emergency:
+  name: "Аварийная газовая служба"
+  kind: emergency
+  channels:
+    - { type: phone, value: "104", label: "Аварийная газовая служба (запах газа)" }
+  notes: "Единый федеральный номер аварийной газовой службы."
+  source: "https://www.gosuslugi.ru/"

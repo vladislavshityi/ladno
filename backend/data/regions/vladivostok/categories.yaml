@@ -1,0 +1,49 @@
+# pos_hint — рубрика ПОС, подсказка для пользователя (проверить людьми).
+- id: stairwell_lighting
+  title: Не работает освещение в подъезде
+  icon: lightbulb
+  pos_hint: "ЖКХ → Содержание общего имущества"
+- id: graffiti
+  title: Граффити / надписи
+  icon: spray-can
+  pos_hint: "Благоустройство → Граффити и незаконная реклама"
+- id: pothole
+  title: Яма / выбоина
+  icon: road
+  pos_hint: "Дороги → Состояние дорожного покрытия"
+- id: stairwell_cleaning
+  title: Грязь в подъезде
+  icon: broom
+  pos_hint: "ЖКХ → Уборка подъездов"
+- id: elevator
+  title: Не работает лифт
+  icon: elevator
+  pos_hint: "ЖКХ → Лифты"
+- id: entrance_door
+  title: Входная дверь / домофон
+  icon: door
+  pos_hint: "ЖКХ → Содержание общего имущества"
+- id: roof_leak
+  title: Протечка кровли
+  icon: droplets
+  pos_hint: "ЖКХ → Ремонт кровли"
+- id: garbage
+  title: Мусор / контейнерная площадка
+  icon: trash
+  pos_hint: "Благоустройство → Обращение с отходами"
+- id: snow_ice
+  title: Снег / наледь
+  icon: snowflake
+  pos_hint: "Благоустройство → Уборка территории зимой"
+- id: open_manhole
+  title: Открытый люк
+  icon: circle-alert
+  pos_hint: "Дороги → Люки и колодцы"
+- id: utility_outage
+  title: Нет воды / света / отопления
+  icon: plug-zap
+  pos_hint: "ЖКХ → Коммунальные услуги"
+- id: other
+  title: Другое
+  icon: more-horizontal
+  pos_hint: "Другое"
