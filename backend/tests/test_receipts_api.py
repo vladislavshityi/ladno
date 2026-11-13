@@ -581,3 +581,29 @@ async def test_non_numeric_orientation_answer_does_not_rotate(
     await upload_png(client, anna, wide.getvalue())
     sent = llm.calls[1][1]["content"][1]["image_url"]["url"]
     assert Image.open(io.BytesIO(base64.b64decode(sent.split(",", 1)[1]))).size == (400, 200)
+
+
+async def test_manual_area_line_with_swapped_volume_and_tariff_is_fixed(
+    client: httpx.AsyncClient, anna: Account
+):
+    body = {
+        "period": "2026-08",
+        "area_m2": "35.90",
+        "total": "1318.97",
+        "lines": [
+            {
+                "service_code": "maintenance",
+                "service_name": "Содержание жилого помещения",
+                "unit": "м2",
+                "volume": "36.74",
+                "tariff": "35.90",
+                "accrued": "1318.97",
+            }
+        ],
+    }
+    receipt = (await client.post("/receipts/manual", json=body, headers=anna.headers)).json()
+    line = receipt["lines"][0]
+    assert (line["volume"], line["tariff"]) == ("35.9", "36.74") or (
+        float(line["volume"]),
+        float(line["tariff"]),
+    ) == (35.9, 36.74)

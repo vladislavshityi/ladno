@@ -99,14 +99,26 @@ def _plausible_period(period: str | None) -> str | None:
     return period if "2020-01" <= period <= f"{year}-{month:02d}" else None
 
 
+AREA_UNITS = ("м2", "м²", "кв.м", "кв. м")
+
+
 def _row(line: ParsedLine) -> ReceiptLine:
     total = line.total if line.total is not None else line.accrued + line.recalculation
     return ReceiptLine(**line.model_dump(exclude={"total"}), total=total)
 
 
+def _fix_area_line(line: ParsedLine, area: Decimal | None) -> ParsedLine:
+    """Услуга «за м²»: объём равен площади. Перепутанные объём и тариф меняем обратно."""
+    if area is None or line.volume is None or line.tariff is None or line.unit not in AREA_UNITS:
+        return line
+    if line.volume != area and line.tariff == area:
+        return line.model_copy(update={"volume": line.tariff, "tariff": line.volume})
+    return line
+
+
 def _build(user_id: uuid.UUID, parsed: ParsedReceipt, sample_id: str | None) -> Receipt:
     period = _plausible_period(parsed.period)
-    lines = [_row(x) for x in parsed.lines]
+    lines = [_row(_fix_area_line(x, parsed.area_m2)) for x in parsed.lines]
     total = parsed.total if parsed.total is not None else sum((x.total for x in lines), ZERO)
     warnings = [*parsed.warnings, *_warnings(period, [line_data(x) for x in lines], total)]
     company = parsed.management_company
