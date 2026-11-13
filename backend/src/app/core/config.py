@@ -33,8 +33,10 @@ class Settings(BaseSettings):
     llm_base_url: str = ""
     llm_api_key: str = ""
     llm_model: str = ""
+    llm_vision_model: str = ""
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:3b"
+    ollama_vision_model: str = ""
     llm_timeout_seconds: float = 60.0
     llm_requests_per_minute: int = 20
 

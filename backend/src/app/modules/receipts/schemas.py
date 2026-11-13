@@ -99,6 +99,7 @@ class ParsedReceipt(BaseModel):
     residents: int | None = None
     lines: list[ParsedLine] = []
     total: Money | None = None
+    warnings: list[str] = []  # что не удалось прочитать при разборе
 
 
 class CompareLine(ApiModel):

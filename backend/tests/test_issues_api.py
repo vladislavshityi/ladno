@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import pytest
 
+from app.core.config import get_settings
 from tests.conftest import PNG, Account, FakeLLM
 from tests.test_rules import uk_rules_with_ladder
 
@@ -191,6 +192,27 @@ async def test_classify_with_llm_text_and_photo(
     user_message = llm.calls[0][1]["content"]
     assert [p["type"] for p in user_message] == ["text", "image_url"]
     assert user_message[1]["image_url"]["url"].startswith("data:image/png;base64,")
+    assert llm.models == [None]  # VISION-модель не задана: работает обычная
+
+
+async def test_classify_with_photo_uses_vision_model_only_for_images(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("LLM_VISION_MODEL", "gpt-4o")
+    get_settings.cache_clear()
+    photo = (
+        await client.post(
+            "/photos", files={"file": ("a.png", PNG, "image/png")}, headers=anna.headers
+        )
+    ).json()
+    llm.replies = ['{"category": "stairwell_lighting", "confidence": 0.9, "summary": "Темно"}']
+    try:
+        for body in ({"text": "не горит свет", "photo_ids": [photo["id"]]}, {"text": "не горит"}):
+            await client.post("/issues/classify", json=body, headers=anna.headers)
+    finally:
+        get_settings.cache_clear()
+    assert llm.models == ["gpt-4o", None]  # с фото — vision-модель, без фото — текстовая
 
 
 async def test_classify_distrusts_unknown_category_and_low_confidence(

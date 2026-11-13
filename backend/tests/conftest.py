@@ -92,10 +92,14 @@ class FakeLLM:
         self.replies: list[str] = []
         self.chunks: list[str] = []
         self.calls: list[list[dict]] = []
+        self.models: list[str | None] = []
         self.error: Exception | None = None
 
-    async def complete(self, messages: list[dict], *, json_mode: bool = False) -> str:
+    async def complete(
+        self, messages: list[dict], *, json_mode: bool = False, model: str | None = None
+    ) -> str:
         self.calls.append(messages)
+        self.models.append(model)
         if self.error:
             raise self.error
         return self.replies.pop(0) if len(self.replies) > 1 else self.replies[0]

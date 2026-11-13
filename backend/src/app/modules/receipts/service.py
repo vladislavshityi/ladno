@@ -75,7 +75,7 @@ def _last4(account: str | None) -> str | None:
 def _warnings(period: str | None, lines: list[LineData], total: Decimal) -> list[str]:
     warnings = []
     if not period:
-        warnings.append("Не распознан период квитанции.")
+        warnings.append("Не удалось уверенно прочитать период — укажите его.")
     if not lines:
         warnings.append("Не удалось распознать строки квитанции.")
     warnings += [
@@ -88,16 +88,25 @@ def _warnings(period: str | None, lines: list[LineData], total: Decimal) -> list
     return warnings
 
 
+def _plausible_period(period: str | None) -> str | None:
+    """Период в пределах от 2020-01 до следующего месяца: модель иногда путает год."""
+    if not period or not PERIOD_RE.match(period):
+        return None
+    today = utcnow()
+    year, month = (today.year, today.month + 1) if today.month < 12 else (today.year + 1, 1)
+    return period if "2020-01" <= period <= f"{year}-{month:02d}" else None
+
+
 def _row(line: ParsedLine) -> ReceiptLine:
     total = line.total if line.total is not None else line.accrued + line.recalculation
     return ReceiptLine(**line.model_dump(exclude={"total"}), total=total)
 
 
 def _build(user_id: uuid.UUID, parsed: ParsedReceipt, sample_id: str | None) -> Receipt:
-    period = parsed.period if parsed.period and PERIOD_RE.match(parsed.period) else None
+    period = _plausible_period(parsed.period)
     lines = [_row(x) for x in parsed.lines]
     total = parsed.total if parsed.total is not None else sum((x.total for x in lines), ZERO)
-    warnings = _warnings(period, [line_data(x) for x in lines], total)
+    warnings = [*parsed.warnings, *_warnings(period, [line_data(x) for x in lines], total)]
     company = parsed.management_company
     return Receipt(
         user_id=user_id,
@@ -180,11 +189,7 @@ async def get_owned(session: AsyncSession, user_id: uuid.UUID, receipt_id: uuid.
 
 
 async def list_receipts(session: AsyncSession, user_id: uuid.UUID) -> list[Receipt]:
-    stmt = (
-        select(Receipt)
-        .where(Receipt.user_id == user_id)
-        .order_by(Receipt.period.desc().nulls_last(), Receipt.created_at.desc())
-    )
+    stmt = select(Receipt).where(Receipt.user_id == user_id).order_by(Receipt.created_at.desc())
     return list((await session.scalars(stmt)).all())
 
 

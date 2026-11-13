@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 from app.core.errors import AppError
 from app.core.region import get_region
-from app.llm.client import LLMClient, Message
+from app.llm.client import LLMClient, Message, vision_model
 from app.llm.structured import ask_json
 from app.modules.issues.schemas import Classification, Contact, Emergency
 
@@ -94,7 +94,7 @@ async def _ask_llm(llm: LLMClient, text: str, images: list[Image]) -> LLMAnswer 
     system = _SYSTEM + json.dumps(categories, ensure_ascii=False)
     messages = [{"role": "system", "content": system}, _user_message(text, images)]
     try:
-        return await ask_json(llm, messages, _ANSWER)
+        return await ask_json(llm, messages, _ANSWER, vision_model() if images else None)
     except (AppError, ValidationError, ValueError):
         log.warning("Классификация не удалась, нужен ручной выбор")
         return None

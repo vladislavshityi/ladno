@@ -6,7 +6,7 @@ from pydantic import TypeAdapter
 
 from app.core.config import get_settings
 from app.core.errors import BadGateway, GatewayTimeout, ServiceUnavailable
-from app.llm.client import OllamaClient, OpenAICompatibleClient, get_llm
+from app.llm.client import OllamaClient, OpenAICompatibleClient, get_llm, vision_model
 from app.llm.structured import ask_json, strip_fence
 
 MESSAGES = [{"role": "user", "content": "привет"}]
@@ -140,3 +140,40 @@ def test_get_llm_by_provider(monkeypatch: pytest.MonkeyPatch):
     finally:
         monkeypatch.undo()
         get_settings.cache_clear()
+
+
+def test_vision_model_by_provider(monkeypatch: pytest.MonkeyPatch):
+    env = {"LLM_VISION_MODEL": "gpt-4o", "OLLAMA_VISION_MODEL": "llava"}
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    try:
+        for provider, expected in (("openai", "gpt-4o"), ("ollama", "llava")):
+            monkeypatch.setenv("LLM_PROVIDER", provider)
+            get_settings.cache_clear()
+            assert vision_model() == expected
+        monkeypatch.setenv("LLM_VISION_MODEL", "")
+        monkeypatch.setenv("LLM_PROVIDER", "openai")
+        get_settings.cache_clear()
+        assert vision_model() is None  # пусто: используется обычная модель
+    finally:
+        get_settings.cache_clear()
+
+
+async def test_complete_model_override_and_ollama_ignores_detail():
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content))
+        return httpx.Response(
+            200, json={"choices": [{"message": {"content": "{}"}}], "message": {"content": "{}"}}
+        )
+
+    part = {
+        "type": "image_url",
+        "image_url": {"url": "data:image/png;base64,QUJD", "detail": "high"},
+    }
+    messages = [{"role": "user", "content": [part]}]
+    await openai(handler).complete(messages, model="gpt-4o")
+    await ollama(handler).complete(messages, model="llava")
+    assert seen[0]["model"] == "gpt-4o" and seen[1]["model"] == "llava"
+    assert seen[1]["messages"][0]["images"] == ["QUJD"]

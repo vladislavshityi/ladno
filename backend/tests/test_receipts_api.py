@@ -1,8 +1,14 @@
+import base64
+import io
 import json
+from datetime import date
 from decimal import Decimal
 
 import httpx
+import pytest
+from PIL import Image
 
+from app.core.config import get_settings
 from tests.conftest import Account, FakeLLM
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
@@ -37,13 +43,6 @@ async def test_unknown_sample_is_404(client: httpx.AsyncClient, anna: Account):
     for sample in ("2030-01", "..%2Fsecret"):
         response = await client.post(f"/receipts/samples/{sample}", headers=anna.headers)
         assert response.status_code == 404
-
-
-async def test_list_is_sorted_by_period_desc(client: httpx.AsyncClient, anna: Account):
-    for sample in ("2026-10", "2026-11", "2026-09"):
-        await load_sample(client, anna, sample)
-    periods = [r["period"] for r in (await client.get("/receipts", headers=anna.headers)).json()]
-    assert periods == ["2026-11", "2026-10", "2026-09"]
 
 
 async def test_receipts_are_private(client: httpx.AsyncClient, anna: Account, boris: Account):
@@ -340,3 +339,125 @@ async def test_line_explanation_from_llm_must_not_invent_numbers(
         )
     ).json()
     assert "99" not in patched["lines"][0]["explanation"]
+
+
+def line(name: str, accrued: str) -> dict:
+    return {"service_code": "other", "service_name": name, "accrued": accrued}
+
+
+def answer(lines: list, rows_count: int, total: str) -> str:
+    parsed = {**PARSED, "rows_count": rows_count, "lines": lines, "total": total}
+    return json.dumps(parsed, ensure_ascii=False)
+
+
+async def upload_png(client: httpx.AsyncClient, who: Account, data: bytes = PNG) -> dict:
+    response = await client.post(
+        "/receipts", files={"file": ("r.png", data, "image/png")}, headers=who.headers
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+async def test_upload_converging_answer_costs_one_model_call(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    llm.replies = [answer([line("А", "100.00"), line("Б", "50.00")], 2, "150.00"), "[]"]
+    receipt = await upload_png(client, anna)
+    assert receipt["status"] == "parsed" and receipt["warnings"] == []
+    assert len(llm.calls) == 2  # разбор и объяснения строк; повторного разбора нет
+    assert "rows_count" in llm.calls[0][0]["content"]
+
+
+async def test_upload_missing_rows_trigger_one_correcting_pass(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    first = answer([line("А", "100.00")], 3, "150.00")
+    fixed = answer([line("А", "100.00"), line("Б", "50.00"), line("В", "0.00")], 3, "150.00")
+    llm.replies = [first, fixed, "[]"]
+    receipt = await upload_png(client, anna)
+    assert len(receipt["lines"]) == 3 and receipt["warnings"] == []
+    followup = llm.calls[1][-1]["content"]
+    assert first in followup and "строк 1, а в таблице 3" in followup
+    assert "сумма строк 100.00, итог 150.00" in followup
+    assert llm.calls[1][1] == llm.calls[0][1]  # та же картинка
+
+
+async def test_upload_not_converging_keeps_best_with_warning(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    worse = answer([line("А", "100.00")], 4, "500.00")
+    better = answer([line("А", "100.00"), line("Б", "300.00")], 4, "500.00")
+    llm.replies = [worse, better, "[]"]
+    receipt = await upload_png(client, anna)
+    assert len(receipt["lines"]) == 2 and receipt["status"] == "needs_review"
+    assert any("Распознано строк: 2, в таблице их 4" in w for w in receipt["warnings"])
+    assert len(llm.calls) == 3  # два разбора и объяснения: больше двух запросов на разбор нет
+
+
+async def test_upload_drops_broken_line_with_warning(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    broken = {"service_name": "Мусор", "accrued": "не число"}
+    llm.replies = [answer([line("А", "100.00"), broken], 2, "100.00"), "[]"]
+    receipt = await upload_png(client, anna)
+    assert [x["service_name"] for x in receipt["lines"]] == ["А"]
+    assert "Не удалось прочитать строку: Мусор" in receipt["warnings"]
+    assert receipt["status"] == "needs_review"
+
+
+async def test_upload_sends_detail_high_and_shrinks_big_image(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    big = io.BytesIO()
+    Image.new("RGB", (4000, 3000), "white").save(big, format="PNG")
+    llm.replies = [answer([line("А", "100.00")], 1, "100.00"), "[]"]
+    await upload_png(client, anna, big.getvalue())
+    image = llm.calls[0][1]["content"][1]["image_url"]
+    assert image["detail"] == "high" and image["url"].startswith("data:image/jpeg;base64,")
+    sent = Image.open(io.BytesIO(base64.b64decode(image["url"].split(",", 1)[1])))
+    assert max(sent.size) == 2048
+
+
+async def test_upload_uses_vision_model_from_settings(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("LLM_VISION_MODEL", "gpt-4o")
+    get_settings.cache_clear()
+    try:
+        llm.replies = [answer([line("А", "100.00")], 1, "100.00"), "[]"]
+        await upload_png(client, anna)
+    finally:
+        get_settings.cache_clear()
+    assert llm.models[0] == "gpt-4o"
+
+
+async def test_implausible_period_is_dropped_with_warning(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    for period in ("2016-08", "2999-01"):
+        parsed = {**PARSED, "period": period}
+        llm.replies = [json.dumps(parsed, ensure_ascii=False), "[]"]
+        receipt = await upload_png(client, anna)
+        assert receipt["period"] is None and receipt["status"] == "needs_review"
+        assert "Не удалось уверенно прочитать период — укажите его." in receipt["warnings"]
+    today = date.today().isoformat()
+    assert today in llm.calls[0][0]["content"]  # модель знает текущую дату
+
+
+async def test_receipts_list_is_newest_upload_first(client: httpx.AsyncClient, anna: Account):
+    first = await load_sample(client, anna, "2026-11")
+    second = await load_sample(client, anna, "2026-09")
+    listed = (await client.get("/receipts", headers=anna.headers)).json()
+    assert [x["id"] for x in listed] == [second["id"], first["id"]]
+    assert listed[0]["period"] == "2026-09"
+
+
+async def test_upload_ignores_summary_row_returned_as_service(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    lines = [line("А", "100.00"), line("Б", "300.00"), line("Итого к оплате", "400.00")]
+    llm.replies = [answer(lines, 2, "400.00"), "[]"]
+    receipt = await upload_png(client, anna)
+    assert [x["service_name"] for x in receipt["lines"]] == ["А", "Б"]
+    assert receipt["status"] == "parsed" and len(llm.calls) == 2

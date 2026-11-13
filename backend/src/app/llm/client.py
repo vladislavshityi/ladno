@@ -15,7 +15,9 @@ UNAVAILABLE = "Языковая модель недоступна"
 
 
 class LLMClient(Protocol):
-    async def complete(self, messages: list[Message], *, json_mode: bool = False) -> str: ...
+    async def complete(
+        self, messages: list[Message], *, json_mode: bool = False, model: str | None = None
+    ) -> str: ...
 
     def stream(self, messages: list[Message]) -> AsyncIterator[str]: ...
 
@@ -54,15 +56,19 @@ class OpenAICompatibleClient:
             "transport": transport,
         }
 
-    def _payload(self, messages: list[Message], **extra: Any) -> dict[str, Any]:
-        return {"model": self.model, "messages": messages, **extra}
+    def _payload(
+        self, messages: list[Message], model: str | None = None, **extra: Any
+    ) -> dict[str, Any]:
+        return {"model": model or self.model, "messages": messages, **extra}
 
-    async def complete(self, messages: list[Message], *, json_mode: bool = False) -> str:
+    async def complete(
+        self, messages: list[Message], *, json_mode: bool = False, model: str | None = None
+    ) -> str:
         extra = {"temperature": 0} if json_mode else {}
         with _map_transport_errors():
             async with httpx.AsyncClient(**self._http) as client:
                 response = await client.post(
-                    "/chat/completions", json=self._payload(messages, **extra)
+                    "/chat/completions", json=self._payload(messages, model, **extra)
                 )
         _raise_for_status(response)
         return response.json()["choices"][0]["message"]["content"] or ""
@@ -118,12 +124,20 @@ class OllamaClient:
             "transport": transport,
         }
 
-    def _payload(self, messages: list[Message], **extra: Any) -> dict[str, Any]:
-        return {"model": self.model, "messages": [_to_ollama(m) for m in messages], **extra}
+    def _payload(
+        self, messages: list[Message], model: str | None = None, **extra: Any
+    ) -> dict[str, Any]:
+        return {
+            "model": model or self.model,
+            "messages": [_to_ollama(m) for m in messages],
+            **extra,
+        }
 
-    async def complete(self, messages: list[Message], *, json_mode: bool = False) -> str:
+    async def complete(
+        self, messages: list[Message], *, json_mode: bool = False, model: str | None = None
+    ) -> str:
         extra = {"format": "json", "options": {"temperature": 0}} if json_mode else {}
-        payload = self._payload(messages, stream=False, **extra)
+        payload = self._payload(messages, model, stream=False, **extra)
         with _map_transport_errors():
             async with httpx.AsyncClient(**self._http) as client:
                 response = await client.post("/api/chat", json=payload)
@@ -154,3 +168,9 @@ def get_llm() -> LLMClient | None:
             s.llm_base_url, s.llm_api_key, s.llm_model, s.llm_timeout_seconds
         )
     return None
+
+
+def vision_model() -> str | None:
+    """Модель для разбора фото; None — та же, что для текста."""
+    s = get_settings()
+    return (s.ollama_vision_model if s.llm_provider == "ollama" else s.llm_vision_model) or None
