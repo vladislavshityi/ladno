@@ -13,14 +13,25 @@ import { applyService, emptyLine, METHODS, refreshTariffs, toManualReceipt, type
 const SELECT =
   'h-10 w-full rounded-lg border border-input bg-transparent px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30'
 
+/** What the scanned QR code said about the receipt, and what it left out. */
+export interface QrNote {
+  payee: string | null
+  inn: string | null
+  missingTotal: boolean
+  missingPeriod: boolean
+}
+
+const MISSING = 'border-amber-500 ring-3 ring-amber-500/30'
+
 interface Props {
+  note?: QrNote | null
   initial: ReceiptForm
   onCancel: () => void
   onCreated: (receipt: Receipt) => void
 }
 
 /** A receipt typed in by hand: the same checks run as for a recognised one. */
-export function ManualReceiptForm({ initial, onCancel, onCreated }: Props) {
+export function ManualReceiptForm({ initial, note, onCancel, onCreated }: Props) {
   const [form, setForm] = useState(initial)
   const [error, setError] = useState('')
   const create = useCreateManualReceipt()
@@ -58,12 +69,23 @@ export function ManualReceiptForm({ initial, onCancel, onCreated }: Props) {
             submit()
           }}
         >
+          {note && (
+            <div className="grid gap-1 rounded-xl bg-muted/60 px-4 py-3 text-sm">
+              {note.payee && (
+                <p>
+                  Получатель: {note.payee}
+                  {note.inn && `, ИНН ${note.inn}`}
+                </p>
+              )}
+              {(note.missingTotal || note.missingPeriod) && <p className="text-muted-foreground">В QR-коде нет суммы и периода — укажите их по квитанции</p>}
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="Месяц квитанции" htmlFor="period">
-              <Input id="period" type="month" value={form.period} onChange={(e) => set({ period: e.target.value })} />
+              <Input id="period" type="month" className={note?.missingPeriod && !form.period ? MISSING : undefined} value={form.period} onChange={(e) => set({ period: e.target.value })} />
             </FormField>
             <FormField label="Итого к оплате, ₽" htmlFor="total" hint="Пусто — сложим строки">
-              <Input id="total" inputMode="decimal" value={form.total} onChange={(e) => set({ total: e.target.value })} />
+              <Input id="total" inputMode="decimal" className={note?.missingTotal && !form.total ? MISSING : undefined} value={form.total} onChange={(e) => set({ total: e.target.value })} />
             </FormField>
             <FormField label="Управляющая компания" htmlFor="company">
               <Input id="company" value={form.companyName} maxLength={200} onChange={(e) => set({ companyName: e.target.value })} />

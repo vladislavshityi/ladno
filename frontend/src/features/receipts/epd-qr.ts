@@ -6,6 +6,7 @@ export interface EpdQr {
   /** YYYY-MM */
   period: string | null
   inn: string | null
+  /** Payee name. */
   name: string | null
   /** Only the last four digits of the personal account are ever kept. */
   accountLast4: string | null

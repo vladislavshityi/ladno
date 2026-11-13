@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useMe } from '@/features/auth/hooks'
 import { housesApi } from '@/features/houses/api'
 import { useCapabilities } from '@/features/meta/hooks'
-import { ManualReceiptForm } from '../components/manual-receipt-form'
+import { ManualReceiptForm, type QrNote } from '../components/manual-receipt-form'
 import { QrScannerDialog } from '../components/qr-scanner-dialog'
 import { ReceiptListItem } from '../components/receipt-list-item'
 import { SamplePicker } from '../components/sample-picker'
@@ -23,11 +23,13 @@ export default function ReceiptsPage() {
   const upload = useUploadReceipt()
   const navigate = useNavigate()
   const [form, setForm] = useState<ReceiptForm | null>(null)
+  const [note, setNote] = useState<QrNote | null>(null)
   const [scanning, setScanning] = useState(false)
   const open = (id: string) => navigate(`/receipts/${id}`)
 
   const startManual = () => {
     const company = me?.management_company
+    setNote(null)
     setForm({ ...emptyForm(), companyName: company?.name ?? '', inn: company?.inn ?? '' })
   }
 
@@ -39,6 +41,7 @@ export default function ReceiptsPage() {
       const found = await housesApi.companiesByInn(qr.inn).catch(() => [])
       name = found[0]?.name ?? name
     }
+    setNote({ payee: qr.name, inn: qr.inn, missingTotal: !qr.total, missingPeriod: !qr.period })
     setForm({
       ...emptyForm(),
       period: qr.period ?? '',
@@ -53,7 +56,7 @@ export default function ReceiptsPage() {
     <div className="mx-auto grid max-w-2xl gap-6">
       <PageHeader title="Квитанции" description="Объясним начисления, сравним месяцы и проверим, не переплачиваете ли вы" />
       {form ? (
-        <ManualReceiptForm initial={form} onCancel={() => setForm(null)} onCreated={(r) => open(r.id)} />
+        <ManualReceiptForm initial={form} note={note} onCancel={() => setForm(null)} onCreated={(r) => open(r.id)} />
       ) : (
         <>
           {vision && (

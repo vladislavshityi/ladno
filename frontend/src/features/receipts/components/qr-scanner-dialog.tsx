@@ -5,8 +5,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { parseEpdQr, type EpdQr } from '../epd-qr'
 import { decodeQr, decodeQrFile } from '../qr-decode'
 
-const SCAN_INTERVAL_MS = 250
-const NOT_A_RECEIPT = 'Это не QR-код квитанции. Нужен код с платёжного документа ЖКУ.'
+const SCAN_INTERVAL_MS = 400
+const NOT_FOUND = 'Не нашли платёжный QR-код. Снимите крупнее, чтобы код занимал треть кадра, или введите вручную'
 
 interface Props {
   open: boolean
@@ -21,7 +21,7 @@ export function QrScannerDialog({ open, onOpenChange, onScanned }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Сканировать QR-код</DialogTitle>
-          <DialogDescription>Наведите камеру на QR-код в нижней части квитанции. Из него возьмём итог, период и УК.</DialogDescription>
+          <DialogDescription>Наведите камеру на QR-код в нижней части квитанции. Из него возьмём получателя и то, что в нём есть: итог и период, если они указаны.</DialogDescription>
         </DialogHeader>
         <Scanner
           onText={(text) => {
@@ -84,8 +84,7 @@ function Scanner({ onText }: { onText: (text: string) => boolean }) {
   const readPhoto = async (photo: File) => {
     try {
       const text = await decodeQrFile(photo)
-      if (!text) setMessage('QR-код на фото не найден. Попробуйте снять ближе и без бликов.')
-      else if (!onText(text)) setMessage(NOT_A_RECEIPT)
+      if (!text || !onText(text)) setMessage(NOT_FOUND)
     } catch {
       setMessage('Не удалось открыть фото')
     }

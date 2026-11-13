@@ -15,6 +15,18 @@ describe('parseEpdQr', () => {
     })
   })
 
+  it('reads a code without amount and period, with a comma-free payee and a different format id', () => {
+    const raw =
+      'ST00011|Name=ООО «Вымышленный водоканал»|PersonalAcc=40702810000000000001|BankName=Банк|BIC=044525000|CorrespAcc=30101810000000000000|PayeeINN=2503022413|KPP=250301001|persAcc=770022559|Techcode=005|'
+    expect(parseEpdQr(raw)).toEqual({
+      total: null,
+      period: null,
+      inn: '2503022413',
+      name: 'ООО «Вымышленный водоканал»',
+      accountLast4: '2559',
+    })
+  })
+
   it('converts kopecks to rubles', () => {
     expect(parseEpdQr('ST00012|Sum=5')?.total).toBe('0.05')
     expect(parseEpdQr('ST00012|Sum=100')?.total).toBe('1.00')
