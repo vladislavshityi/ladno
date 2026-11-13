@@ -25,7 +25,8 @@ _SYSTEM = (
     "category (один из id списка или null), confidence (число от 0 до 1), is_emergency (true при "
     "угрозе жизни: газ, затопление, искрение, обрушение), summary (одна фраза о том, что видно или "
     "описано), clarification (если данных мало, один короткий вопрос, что уточнить; иначе пустая "
-    "строка). Не называй людей и номера квартир. Категории: "
+    "строка). Учитывай hint категорий: «Другое» — только если ничего не подходит. "
+    "Не называй людей и номера квартир. Категории: "
 )
 
 
@@ -40,31 +41,37 @@ class LLMAnswer(BaseModel):
 _ANSWER = TypeAdapter(LLMAnswer)
 
 
-def emergency_reason(text: str) -> str | None:
+def emergency_rule(text: str) -> dict | None:
     """Признаки аварии из справочника: проверяются кодом независимо от модели."""
     lowered = text.lower()
     for rule in get_region().classification.get("emergency", []):
         if any(word in lowered for word in rule["keywords"]):
-            return rule["reason"]
+            return rule
     return None
 
 
-def _emergency_contacts() -> list[Contact]:
+def _emergency_contacts(keys: list[str]) -> list[Contact]:
     """Телефоны экстренных служб берутся из справочника, а не из ответа модели."""
-    region = get_region()
-    keys = region.classification.get("emergency_addressees", [])
+    addressees = get_region().addressees
     return [
         Contact.model_validate(channel)
         for key in keys
-        for channel in region.addressees.get(key, {}).get("channels", [])
+        for channel in addressees.get(key, {}).get("channels", [])
         if channel["type"] == "phone"
     ]
 
 
-def _emergency(reason: str | None, llm_flag: bool) -> Emergency | None:
-    if reason is None and not llm_flag:
+def _emergency(rule: dict | None, llm_flag: bool) -> Emergency | None:
+    if rule is None and not llm_flag:
         return None
-    return Emergency(reason=reason or DEFAULT_EMERGENCY_REASON, contacts=_emergency_contacts())
+    if rule is None:
+        keys = get_region().classification.get("emergency_addressees", [])
+        return Emergency(reason=DEFAULT_EMERGENCY_REASON, contacts=_emergency_contacts(keys))
+    return Emergency(
+        reason=rule["reason"],
+        advice=rule.get("advice"),
+        contacts=_emergency_contacts(rule.get("addressees", [])),
+    )
 
 
 def _with_emergency(result: Classification, emergency: Emergency | None) -> Classification:
@@ -80,7 +87,10 @@ def _user_message(text: str, images: list[Image]) -> Message:
 
 
 async def _ask_llm(llm: LLMClient, text: str, images: list[Image]) -> LLMAnswer | None:
-    categories = [{"id": c["id"], "title": c["title"]} for c in get_region().categories]
+    categories = [
+        {key: c[key] for key in ("id", "title", "hint") if key in c}
+        for c in get_region().categories
+    ]
     system = _SYSTEM + json.dumps(categories, ensure_ascii=False)
     messages = [{"role": "system", "content": system}, _user_message(text, images)]
     try:
@@ -93,7 +103,7 @@ async def _ask_llm(llm: LLMClient, text: str, images: list[Image]) -> LLMAnswer 
 async def classify(llm: LLMClient | None, text: str, images: list[Image]) -> Classification:
     """Без модели, при сбое или сомнении модели — ручной выбор категории."""
     answer = await _ask_llm(llm, text, images) if llm else None
-    emergency = _emergency(emergency_reason(text), bool(answer and answer.is_emergency))
+    emergency = _emergency(emergency_rule(text), bool(answer and answer.is_emergency))
     clarification = (answer.clarification.strip() if answer else "") or None
     known = answer is not None and get_region().category(answer.category or "") is not None
     if answer is None or not known or answer.confidence < MIN_CONFIDENCE:

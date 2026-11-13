@@ -27,3 +27,11 @@ def truncate(text: str, limit: int) -> str:
         return head.rstrip()
     space = head.rfind(" ")
     return head[:space].rstrip() if space > 0 else head
+
+
+def days_phrase(days: int, kind: str) -> str:
+    """«1 рабочего дня», «10 календарных дней»: падеж после «в течение» и «не позднее»."""
+    single = days % 10 == 1 and days % 100 != 11
+    adjective = {"working": ("рабочего", "рабочих"), "calendar": ("календарного", "календарных")}
+    word = adjective[kind][0 if single else 1]
+    return f"{days} {word} {'дня' if single else 'дней'}"

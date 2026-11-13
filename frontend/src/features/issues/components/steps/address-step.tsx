@@ -6,7 +6,13 @@ import { FormField } from '@/components/form-field'
 import { useMe } from '@/features/auth/hooks'
 import { AddressSearch } from '@/features/houses/components/address-search'
 import { StepLayout } from '../step-layout'
-import type { StepProps } from '../../wizard'
+import type { IssueLocation, StepProps } from '../../wizard'
+
+const LOCATION_FIELDS = [
+  { key: 'entrance', label: 'Подъезд', placeholder: '2' },
+  { key: 'floor', label: 'Этаж', placeholder: '5' },
+  { key: 'apartment', label: 'Квартира', placeholder: '34' },
+] as const
 
 export function AddressStep({ data, setData, onNext, onBack }: StepProps) {
   const { data: me } = useMe()
@@ -15,6 +21,8 @@ export function AddressStep({ data, setData, onNext, onBack }: StepProps) {
   const address = picked ?? me?.house?.address ?? me?.custom_address
   const custom = data.house ? false : data.customAddress != null || (!me?.house && Boolean(me?.custom_address))
   const showSearch = changing || !address
+  const setLocation = (key: keyof IssueLocation, value: string) =>
+    setData((d) => ({ ...d, location: { ...d.location, [key]: value } }))
 
   return (
     <StepLayout
@@ -48,15 +56,34 @@ export function AddressStep({ data, setData, onNext, onBack }: StepProps) {
           </Button>
         </div>
       )}
-      <FormField label="Где именно" htmlFor="location" hint="Подъезд, этаж, место — по желанию">
-        <Input
-          id="location"
-          value={data.location}
-          maxLength={300}
-          onChange={(e) => setData((d) => ({ ...d, location: e.target.value }))}
-          placeholder="Например: 2 подъезд, 3 этаж"
-        />
-      </FormField>
+      <fieldset className="grid gap-3">
+        <legend className="mb-1 text-sm font-medium">
+          Где именно <span className="font-normal text-muted-foreground">— по желанию</span>
+        </legend>
+        <div className="grid grid-cols-3 gap-3">
+          {LOCATION_FIELDS.map((f) => (
+            <FormField key={f.key} label={f.label} htmlFor={`location-${f.key}`}>
+              <Input
+                id={`location-${f.key}`}
+                inputMode="numeric"
+                maxLength={8}
+                value={data.location[f.key]}
+                onChange={(e) => setLocation(f.key, e.target.value)}
+                placeholder={f.placeholder}
+              />
+            </FormField>
+          ))}
+        </div>
+        <FormField label="Место" htmlFor="location-place">
+          <Input
+            id="location-place"
+            maxLength={200}
+            value={data.location.place}
+            onChange={(e) => setLocation('place', e.target.value)}
+            placeholder="Например: у лифта, во дворе у детской площадки"
+          />
+        </FormField>
+      </fieldset>
     </StepLayout>
   )
 }

@@ -19,7 +19,7 @@
 {% endif %}
 
 Требование:
-Прошу провести проверку деятельности управляющей организации, обязать её устранить нарушение и письменно сообщить о результате{% if response_deadline %} в срок не позднее {{ response_deadline.days }} {{ 'рабочих' if response_deadline.type == 'working' else 'календарных' }} дн. ({{ response_deadline.source }}){% endif %}.
+Прошу провести проверку деятельности управляющей организации, обязать её устранить нарушение и письменно сообщить о результате{% if response_deadline %} в срок не позднее {{ response_deadline|days }} ({{ response_deadline.source }}){% endif %}.
 
 Приложения: {% if photos_count %}фотографии, {{ photos_count }} шт.{% else %}нет.{% endif %}
 

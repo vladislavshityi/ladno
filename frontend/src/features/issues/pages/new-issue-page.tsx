@@ -9,7 +9,7 @@ import { QuestionsStep } from '../components/steps/questions-step'
 import { RouteStep } from '../components/steps/route-step'
 import { WizardStepper } from '../components/wizard-stepper'
 import { useCreateIssue } from '../hooks'
-import { EMPTY_WIZARD, WIZARD_STEPS, type StepId, type WizardData } from '../wizard'
+import { EMPTY_WIZARD, WIZARD_STEPS, formatLocation, type StepId, type WizardData } from '../wizard'
 
 export default function NewIssuePage() {
   const { data: me } = useMe()
@@ -18,7 +18,7 @@ export default function NewIssuePage() {
   const [step, setStep] = useState<StepId>('describe')
   const [data, setData] = useState<WizardData>(() => ({
     ...EMPTY_WIZARD,
-    location: me?.entrance ? `${me.entrance} подъезд` : '',
+    location: { ...EMPTY_WIZARD.location, entrance: me?.entrance ?? '', apartment: me?.apartment ?? '' },
   }))
 
   const move = (delta: 1 | -1) => {
@@ -35,7 +35,8 @@ export default function NewIssuePage() {
         already_contacted_uk: data.alreadyContactedUk ?? false,
         house_id: data.house?.house_id ?? null,
         custom_address: data.customAddress,
-        location_details: data.location.trim() || null,
+        description: data.text.trim(),
+        location_details: formatLocation(data.location),
         photo_ids: data.photos.flatMap((p) => (p.id ? [p.id] : [])),
       },
       { onSuccess: (issue) => navigate(`/issues/${issue.id}`) },

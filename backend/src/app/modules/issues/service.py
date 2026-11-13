@@ -36,6 +36,7 @@ def to_read(issue: Issue) -> IssueRead:
         house_id=issue.house_id,
         address=issue.house.address if issue.house else issue.custom_address,
         location_details=issue.location_details,
+        description=issue.description,
         photos=[
             IssuePhoto(id=uuid.UUID(p), url=photos.photo_url(uuid.UUID(p))) for p in issue.photo_ids
         ],
@@ -106,7 +107,9 @@ async def create_issue(
     route = routing.build_route(
         data.category, data.answers, data.already_contacted_uk, place.company, hint
     )
-    summary = await drafts.build_summary(llm, data.category, data.answers, route.addressee)
+    summary = await drafts.build_summary(
+        llm, data.category, data.answers, route.addressee, data.description
+    )
     draft = drafts.build_draft(
         summary,
         route,
@@ -123,6 +126,7 @@ async def create_issue(
         house_id=place.house.id if place.house else None,
         custom_address=None if place.house else place.address,
         location_details=data.location_details,
+        description=data.description.strip(),
         photo_ids=[str(p) for p in data.photo_ids],
         addressee_key=route.addressee.key,
         route=route.model_dump(mode="json"),
@@ -191,7 +195,9 @@ async def escalate_issue(session: AsyncSession, user: User, issue_id: uuid.UUID)
         raise Conflict("Дальше эскалировать некуда: ступени закончились", "no_escalation_left")
     summary = parent.summary
     if not drafts.summary_fits(summary, route.addressee.key):
-        summary = await drafts.build_summary(None, parent.category, parent.answers, route.addressee)
+        summary = await drafts.build_summary(
+            None, parent.category, parent.answers, route.addressee, parent.description
+        )
     draft = drafts.build_escalation_draft(
         summary, route, place.address, parent.location_details, len(parent.photo_ids),
         applicant_line(user), _previous(parent, parent_route),

@@ -161,6 +161,47 @@ entrance_door:
     response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
     escalation: [housing_inspection, prosecutor]
 
+flooding:
+  questions:
+    - id: direction
+      text: "Что случилось?"
+      options:
+        - { value: from_above, label: "Нас заливают сверху" }
+        - { value: to_below, label: "Мы заливаем соседей снизу" }
+        - { value: common_pipe, label: "Течёт стояк или общая труба" }
+    - id: active
+      text: "Вода течёт прямо сейчас?"
+      options:
+        - { value: "yes", label: "Да, течёт" }
+        - { value: "no", label: "Нет, уже остановили" }
+  routes:
+    - when: { direction: to_below }
+      addressee: managing_company
+      explanation: "Перекройте воду и вызовите аварийную службу УК: она найдёт место течи и составит акт о заливе. Течь на стояке до первого крана — зона ответственности УК, после крана (смеситель, шланг, батарея с краном) — собственника квартиры."
+      basis:
+        - { text: "Стояки и ответвления до первого отключающего устройства входят в общее имущество МКД", source: "ПП РФ № 491", verified: false }
+        - { text: "Акт о причинении ущерба составляется исполнителем по заявлению потребителя", source: "ПП РФ № 354", verified: false }
+      response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+      fix_deadline: { days: 1, type: calendar, source: "ПП РФ № 290", verified: false }
+      escalation: [housing_inspection, prosecutor]
+    - when: { direction: from_above }
+      addressee: managing_company
+      explanation: "Предупредите соседей сверху и вызовите аварийную службу УК. Потребуйте акт о заливе: по нему возмещают ущерб — УК, если течёт общая труба, или соседи, если течь у них в квартире."
+      basis:
+        - { text: "Акт о причинении ущерба составляется исполнителем по заявлению потребителя", source: "ПП РФ № 354", verified: false }
+        - { text: "Собственник несёт бремя содержания своего имущества", source: "ГК РФ, ст. 210", verified: false }
+      response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+      fix_deadline: { days: 1, type: calendar, source: "ПП РФ № 290", verified: false }
+      escalation: [housing_inspection, prosecutor]
+  default:
+    addressee: managing_company
+    explanation: "Стояки и общие трубы — общее имущество дома: устранить течь и составить акт о заливе обязана УК."
+    basis:
+      - { text: "Стояки и ответвления до первого отключающего устройства входят в общее имущество МКД", source: "ПП РФ № 491", verified: false }
+    response_deadline: { days: 10, type: working, source: "ПП РФ № 354", verified: false }
+    fix_deadline: { days: 1, type: calendar, source: "ПП РФ № 290", verified: false }
+    escalation: [housing_inspection, prosecutor]
+
 roof_leak:
   questions:
     - id: active

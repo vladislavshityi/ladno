@@ -7,7 +7,7 @@ const RANK: Record<IssueStatus, number> = { draft: 0, submitted: 1, in_progress:
 
 function resultStep(status: IssueStatus) {
   if (status === 'no_response') return { label: 'Нет ответа в срок', tone: 'text-warning border-warning' }
-  if (status === 'rejected') return { label: 'Получен отказ', tone: 'text-destructive border-destructive' }
+  if (status === 'rejected') return { label: 'Проблема не решена', tone: 'text-destructive border-destructive' }
   return { label: 'Получен ответ', tone: '' }
 }
 

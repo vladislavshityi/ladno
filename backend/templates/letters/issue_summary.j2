@@ -1,4 +1,5 @@
 Обращение касается проблемы: {{ title|lower }}.
+{% if description %} {{ description|trim|trim('.') }}.{% endif %}
 {% for question, answer in answers.items() %}
  {{ question|trim('?') }}: {{ answer|lower }}.
 {% endfor %}

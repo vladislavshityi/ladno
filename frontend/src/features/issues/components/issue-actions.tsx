@@ -27,9 +27,9 @@ export function IssueActions({ issue }: { issue: Issue }) {
       <Button variant="outline" disabled={patch.isPending} onClick={() => set('resolved')}>
         <CheckCircle2 className="text-success" /> Проблема решена
       </Button>
-      {issue.status !== 'rejected' && (
+      {issue.status === 'in_progress' && (
         <Button variant="outline" disabled={patch.isPending} onClick={() => set('rejected')}>
-          <XCircle /> Получен отказ
+          <XCircle /> Проблема не решена
         </Button>
       )}
       {showEscalate && (

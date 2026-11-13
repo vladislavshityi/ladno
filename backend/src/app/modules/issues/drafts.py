@@ -19,9 +19,11 @@ log = logging.getLogger(__name__)
 
 SUMMARY_MAX_CHARS = 600
 _SUMMARY_PROMPT = (
-    "Напиши один абзац сути обращения жителя по фактам ниже. Адресат указан в поле addressee "
+    "Перескажи проблему жителя деловым языком от первого лица, 2–4 предложения. Главный источник — "
+    "поле description (слова жителя), category и answers уточняют его. Адресат в поле addressee "
     "только для сведения: не называй его и не пиши, в какую организацию обращаешься. "
-    "Не добавляй чисел, имён и сведений, которых нет в фактах."
+    "Не добавляй чисел, имён, мест и сведений, которых нет в фактах. Не пиши просьб и требований: "
+    "они будут в письме отдельно."
 )
 _UK_APPEAL = re.compile(r"\b(?:в|к)\s+(?:управляющ\w+\s+(?:компани|организаци)\w+|УК\b)", re.I)
 
@@ -42,8 +44,9 @@ def readable_answers(category: str, answers: dict[str, str]) -> dict[str, str]:
     return result
 
 
-def _template_summary(title: str, answers: dict[str, str]) -> str:
-    return " ".join(render("letters/issue_summary.j2", title=title, answers=answers).split())
+def _template_summary(title: str, answers: dict[str, str], description: str) -> str:
+    text = render("letters/issue_summary.j2", title=title, answers=answers, description=description)
+    return " ".join(text.split())
 
 
 def summary_fits(text: str, addressee_key: str) -> bool:
@@ -52,10 +55,18 @@ def summary_fits(text: str, addressee_key: str) -> bool:
 
 
 async def _llm_summary(
-    llm: LLMClient, title: str, answers: dict[str, str], addressee: Addressee
+    llm: LLMClient, title: str, answers: dict[str, str], addressee: Addressee, description: str
 ) -> str | None:
+    if not description and not answers:
+        return None  # пересказывать нечего: модель начнёт сочинять
     facts = json.dumps(
-        {"category": title, "answers": answers, "addressee": addressee.name}, ensure_ascii=False
+        {
+            "description": description,
+            "category": title,
+            "answers": answers,
+            "addressee": addressee.name,
+        },
+        ensure_ascii=False,
     )
     messages = [{"role": "system", "content": _SUMMARY_PROMPT}, {"role": "user", "content": facts}]
     try:
@@ -68,12 +79,17 @@ async def _llm_summary(
 
 
 async def build_summary(
-    llm: LLMClient | None, category: str, answers: dict[str, str], addressee: Addressee
+    llm: LLMClient | None,
+    category: str,
+    answers: dict[str, str],
+    addressee: Addressee,
+    description: str = "",
 ) -> str:
     """Текст модели берём, только если прошёл проверки; иначе шаблонный."""
     title, readable = category_title(category), readable_answers(category, answers)
-    text = await _llm_summary(llm, title, readable, addressee) if llm else None
-    return text or _template_summary(title, readable)
+    description = description.strip()
+    text = await _llm_summary(llm, title, readable, addressee, description) if llm else None
+    return text or _template_summary(title, readable, description)
 
 
 def _draft(template: str, context: dict[str, Any]) -> Draft:

@@ -23,7 +23,25 @@ export interface WizardData {
   house: AddressSuggestion | null
   /** Address typed by the resident when the house is not in the directory. */
   customAddress: string | null
-  location: string
+  location: IssueLocation
+}
+
+export interface IssueLocation {
+  entrance: string
+  floor: string
+  apartment: string
+  place: string
+}
+
+/** "подъезд 3, этаж 4, кв. 12, у мусоропровода" — empty parts are skipped. */
+export function formatLocation({ entrance, floor, apartment, place }: IssueLocation): string | null {
+  const parts = [
+    entrance.trim() && `подъезд ${entrance.trim()}`,
+    floor.trim() && `этаж ${floor.trim()}`,
+    apartment.trim() && `кв. ${apartment.trim()}`,
+    place.trim(),
+  ].filter(Boolean)
+  return parts.length ? parts.join(', ') : null
 }
 
 export const EMPTY_WIZARD: WizardData = {
@@ -35,7 +53,7 @@ export const EMPTY_WIZARD: WizardData = {
   alreadyContactedUk: null,
   house: null,
   customAddress: null,
-  location: '',
+  location: { entrance: '', floor: '', apartment: '', place: '' },
 }
 
 export interface StepProps {

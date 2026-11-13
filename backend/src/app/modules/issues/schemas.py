@@ -50,6 +50,7 @@ class Contact(ApiModel):
 
 class Emergency(ApiModel):
     reason: str
+    advice: str | None = Field(None, description="Что сделать прямо сейчас")
     contacts: list[Contact] = []
 
 
@@ -132,6 +133,9 @@ class RouteResult(ApiModel):
 
 
 class IssueCreate(RouteRequest):
+    description: str = Field(
+        "", max_length=1000, description="Описание проблемы словами жителя: основа текста обращения"
+    )
     location_details: str | None = Field(None, max_length=300, description="Подъезд, этаж, место")
     photo_ids: list[uuid.UUID] = Field([], max_length=10)
 
@@ -167,6 +171,7 @@ class IssueRead(ORMModel):
     address: str | None = Field(
         None, description="Адрес дома; пустой house_id при заданном адресе — адрес введён вручную"
     )
+    description: str = ""
     location_details: str | None = None
     photos: list[IssuePhoto] = Field(default_factory=list)
     route: RouteResult

@@ -50,6 +50,7 @@ class Issue(Base):
     )
     custom_address: Mapped[str | None] = mapped_column(String(500))
     location_details: Mapped[str | None] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(Text, default="", server_default="")
     photo_ids: Mapped[list[str]] = mapped_column(JSONB, default=list)
 
     addressee_key: Mapped[str] = mapped_column(String(50))

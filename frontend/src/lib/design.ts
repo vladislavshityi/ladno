@@ -16,7 +16,7 @@ export const STATUS_META: Record<IssueStatus, { label: string; tone: Tone }> = {
   in_progress: { label: 'В работе', tone: 'info' },
   resolved: { label: 'Решено', tone: 'success' },
   no_response: { label: 'Нет ответа', tone: 'warning' },
-  rejected: { label: 'Отказ', tone: 'danger' },
+  rejected: { label: 'Не решено', tone: 'danger' },
 }
 
 export const ACTIVE_STATUSES: IssueStatus[] = ['submitted', 'in_progress']

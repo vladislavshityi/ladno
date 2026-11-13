@@ -1,4 +1,6 @@
-from app.core.text import numbers_are_supported, truncate
+import pytest
+
+from app.core.text import days_phrase, numbers_are_supported, truncate
 
 
 def test_numbers_are_supported():
@@ -23,3 +25,17 @@ def test_truncate_by_word_when_no_sentence():
 
 def test_truncate_hard_cut_single_word():
     assert truncate("а" * 50, 10) == "а" * 10
+
+
+@pytest.mark.parametrize(
+    ("days", "kind", "expected"),
+    [
+        (1, "calendar", "1 календарного дня"),
+        (3, "working", "3 рабочих дней"),
+        (10, "working", "10 рабочих дней"),
+        (11, "calendar", "11 календарных дней"),
+        (21, "working", "21 рабочего дня"),
+    ],
+)
+def test_days_phrase(days: int, kind: str, expected: str):
+    assert days_phrase(days, kind) == expected

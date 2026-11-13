@@ -1044,6 +1044,11 @@ export interface components {
             /** Reason */
             reason: string;
             /**
+             * Advice
+             * @description Что сделать прямо сейчас
+             */
+            advice: string | null;
+            /**
              * Contacts
              * @default []
              */
@@ -1128,6 +1133,12 @@ export interface components {
              */
             custom_address?: string | null;
             /**
+             * Description
+             * @description Описание проблемы словами жителя: основа текста обращения
+             * @default
+             */
+            description: string;
+            /**
              * Location Details
              * @description Подъезд, этаж, место
              */
@@ -1176,6 +1187,11 @@ export interface components {
              * @description Адрес дома; пустой house_id при заданном адресе — адрес введён вручную
              */
             address: string | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
             /** Location Details */
             location_details: string | null;
             /** Photos */

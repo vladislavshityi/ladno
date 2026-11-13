@@ -27,7 +27,7 @@ async def submit(client: httpx.AsyncClient, who: Account, issue_id: str, **extra
 
 async def test_categories_and_questions(client: httpx.AsyncClient):
     categories = (await client.get("/categories")).json()
-    assert len(categories) == 12 and {"id", "title", "icon", "pos_hint"} == set(categories[0])
+    assert len(categories) == 13 and {"id", "title", "icon", "pos_hint"} == set(categories[0])
     questions = (await client.get("/categories/stairwell_lighting/questions")).json()
     assert [q["id"] for q in questions] == ["duration", "scope"]
     assert (await client.get("/categories/nope/questions")).status_code == 404
@@ -348,3 +348,38 @@ async def test_refresh_letter_only_for_own_drafts(
     await submit(client, anna, issue["id"])
     response = await client.post(url, headers=anna.headers)
     assert response.status_code == 409 and response.json()["code"] == "not_a_draft"
+
+
+async def test_flooding_neighbour_gets_flood_advice_without_gas_phone(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    llm.replies = ['{"category": "flooding", "confidence": 0.9, "is_emergency": true}']
+    text = "Пришла соседка снизу, сказала что мы её топим"
+    body = (await client.post("/issues/classify", json={"text": text}, headers=anna.headers)).json()
+    assert body["category"] == "flooding" and body["emergency"]["reason"] == "Затопление"
+    assert "Перекройте воду" in body["emergency"]["advice"]
+    assert "104" not in {c["value"] for c in body["emergency"]["contacts"]}
+
+
+async def test_summary_is_built_from_resident_description(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    description = "Соседка снизу говорит, что мы её топим"
+    llm.replies = ["Сообщаю, что из моей квартиры протекает вода к соседям снизу."]
+    payload = {
+        "category": "flooding",
+        "answers": {"direction": "to_below"},
+        "description": description,
+    }
+    issue = (await client.post("/issues", json=payload, headers=anna.headers)).json()
+    assert description in json.dumps(llm.calls[-1], ensure_ascii=False)
+    assert "протекает вода к соседям снизу" in issue["draft"]["full"]
+    assert issue["description"] == description
+
+
+async def test_summary_without_facts_does_not_ask_llm(
+    client: httpx.AsyncClient, anna: Account, llm: FakeLLM
+):
+    llm.replies = ["Плохое благоустройство района и нет скамеек в парках."]
+    issue = (await client.post("/issues", json={"category": "other"}, headers=anna.headers)).json()
+    assert "скамеек" not in issue["draft"]["full"]
