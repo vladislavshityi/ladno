@@ -59,6 +59,19 @@ services:
       timeout: 3s
       retries: 5
 
+  bot:
+    build: ./bot
+    image: ladno-bot
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      BACKEND_URL: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+
   ollama:
     profiles: ["ollama"]
     image: ollama/ollama:latest

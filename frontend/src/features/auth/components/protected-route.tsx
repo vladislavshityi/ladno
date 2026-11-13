@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
@@ -10,8 +10,10 @@ import { useMe } from '../hooks'
 export function RequireAuth() {
   const { token } = useAuth()
   const { data: me, isError, refetch } = useMe()
+  const { pathname } = useLocation()
 
-  if (!token) return <Navigate to="/" replace />
+  // The target is kept so a deep link (e.g. from the bot) opens after the automatic sign-in.
+  if (!token) return <Navigate to="/" replace state={{ from: pathname }} />
   if (isError) {
     return (
       <div className="mx-auto flex min-h-svh max-w-md items-center px-4">

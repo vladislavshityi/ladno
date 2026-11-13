@@ -1,10 +1,14 @@
 """Загруженные файлы: тип по сигнатуре, а не по заявленному MIME, и хранение на диске."""
 
 import asyncio
+import io
 import secrets
 from pathlib import Path
 
+from PIL import Image, ImageOps, UnidentifiedImageError
+
 from app.core.config import get_settings
+from app.core.errors import UnsupportedMedia
 
 EXTENSIONS = {
     "image/jpeg": "jpg",
@@ -24,6 +28,18 @@ def detect_content_type(data: bytes) -> str | None:
     if data.startswith(b"%PDF-"):
         return "application/pdf"
     return None
+
+
+def strip_metadata(data: bytes, content_type: str) -> bytes:
+    """Пересохраняет картинку без EXIF: в нём бывают координаты съёмки и модель телефона."""
+    out = io.BytesIO()
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            clean = ImageOps.exif_transpose(image)
+            clean.save(out, format=EXTENSIONS[content_type].replace("jpg", "jpeg"), quality=90)
+    except (UnidentifiedImageError, OSError) as error:
+        raise UnsupportedMedia("Не удалось прочитать изображение") from error
+    return out.getvalue()
 
 
 async def store_file(data: bytes, content_type: str, subdir: str) -> Path:

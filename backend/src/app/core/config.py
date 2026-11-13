@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[3]
 DEV_JWT_SECRET = "dev-only-secret-change-me-in-production-please"
+DEV_PII_KEY = "ZGV2LW9ubHkta2V5LWZvci1sb2NhbC1wZGF0YS0wMDA="
 
 
 class Settings(BaseSettings):
@@ -21,6 +22,7 @@ class Settings(BaseSettings):
     jwt_secret: str = DEV_JWT_SECRET
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7
+    pii_encryption_key: str = DEV_PII_KEY
 
     telegram_bot_token: str = ""
     telegram_bot_username: str = ""
@@ -47,9 +49,11 @@ class Settings(BaseSettings):
     consent_version: str = "2026-11"
 
     @model_validator(mode="after")
-    def _require_real_secret_in_prod(self) -> Self:
+    def _require_real_secrets_in_prod(self) -> Self:
         if self.app_env == "prod" and self.jwt_secret == DEV_JWT_SECRET:
             raise ValueError("В prod нужен собственный JWT_SECRET")
+        if self.app_env == "prod" and self.pii_encryption_key == DEV_PII_KEY:
+            raise ValueError("В prod нужен собственный PII_ENCRYPTION_KEY")
         return self
 
     @property

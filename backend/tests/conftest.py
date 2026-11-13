@@ -1,4 +1,5 @@
 import asyncio
+import io
 import os
 import tempfile
 from collections.abc import AsyncIterator
@@ -10,6 +11,7 @@ os.environ.update(
     {
         "APP_ENV": "dev",
         "JWT_SECRET": "test-secret-for-tests-only-0123456789abcdef",
+        "PII_ENCRYPTION_KEY": "dGVzdC1vbmx5LWtleS1mb3ItcGVyc29uYWwtZGF0YSE=",
         "LLM_PROVIDER": "none",
         "LLM_BASE_URL": "",
         "LLM_API_KEY": "",
@@ -27,6 +29,7 @@ import pytest_asyncio
 from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
+from PIL import Image
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import (
@@ -132,6 +135,16 @@ async def client(app: FastAPI, session: AsyncSession) -> AsyncIterator[httpx.Asy
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test/api") as http:
         yield http
+
+
+def make_png(exif: bytes | None = None) -> bytes:
+    """Настоящая картинка 4×4: загрузка фото пересохраняет её через Pillow."""
+    out = io.BytesIO()
+    Image.new("RGB", (4, 4), "white").save(out, format="PNG", exif=exif or b"")
+    return out.getvalue()
+
+
+PNG = make_png()
 
 
 @dataclass

@@ -4,10 +4,9 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import pytest
 
-from tests.conftest import Account, FakeLLM
+from tests.conftest import PNG, Account, FakeLLM
 from tests.test_rules import uk_rules_with_ladder
 
-PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
 BODY = {"patch": {"json": {"external_ref": "x"}}}
 DARK = {"category": "stairwell_lighting", "answers": {"scope": "floor", "duration": "week_plus"}}
 
@@ -134,9 +133,7 @@ async def test_photos_upload_owner_only_and_attach(
     photo = up.json()
     assert up.status_code == 201 and photo["url"] == f"/api/photos/{photo['id']}"
     own = await client.get(f"/photos/{photo['id']}", headers=anna.headers)
-    assert (
-        own.status_code == 200 and own.content == PNG and own.headers["content-type"] == "image/png"
-    )
+    assert own.status_code == 200 and own.headers["content-type"] == "image/png"
     assert (await client.get(f"/photos/{photo['id']}", headers=boris.headers)).status_code == 404
     stolen = await client.post(
         "/issues", json={**DARK, "photo_ids": [photo["id"]]}, headers=boris.headers

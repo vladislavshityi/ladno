@@ -1,0 +1,40 @@
+[project]
+name = "ladno-bot"
+version = "0.1.0"
+description = "Ладно: Telegram-бот, открывающий Mini App и напоминающий о сроках ответа"
+requires-python = ">=3.12"
+dependencies = [
+    "aiogram>=3.17.0",
+    "httpx>=0.28.1",
+    "pydantic-settings>=2.7.0",
+]
+
+[tool.uv.build-backend]
+module-name = "bot"
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.25.0",
+    "ruff>=0.9.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC", "RUF"]
+# В русских текстах много букв, похожих на латинские.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["."]

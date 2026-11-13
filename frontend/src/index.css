@@ -172,3 +172,18 @@
   0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
   40% { opacity: 1; transform: translateY(-2px); }
 }
+
+/* The bear is drawn in one stroke, like the embroidery it comes from. */
+.logo-draw {
+  stroke-dasharray: 1;
+  animation: logo-draw 1.4s ease-out both;
+}
+
+@keyframes logo-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-draw { animation: none; }
+}

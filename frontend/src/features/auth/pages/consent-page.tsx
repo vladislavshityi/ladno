@@ -20,7 +20,7 @@ export default function ConsentPage() {
   return (
     <div className="flex min-h-svh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
-        <LogoMark className="mx-auto mb-6 size-12" />
+        <LogoMark animated className="mx-auto mb-6 size-12" />
         <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-border">
           <CardHeader className="text-center">
             <CardTitle className="text-xl">Прежде чем начать</CardTitle>

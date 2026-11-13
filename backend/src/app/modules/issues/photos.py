@@ -29,6 +29,7 @@ async def save_photo(session: AsyncSession, user_id: uuid.UUID, data: bytes) -> 
     content_type = files.detect_content_type(data)
     if content_type not in PHOTO_TYPES:
         raise UnsupportedMedia("Нужен файл JPEG, PNG или WebP")
+    data = await asyncio.to_thread(files.strip_metadata, data, content_type)
     path = await files.store_file(data, content_type, "photos")
     photo = Photo(user_id=user_id, path=str(path), content_type=content_type)
     session.add(photo)

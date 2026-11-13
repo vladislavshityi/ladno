@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import BigInteger, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.crypto import EncryptedString
 from app.core.db import Base, CreatedAt, UuidPk
 from app.modules.houses.models import House, ManagementCompany
 
@@ -14,12 +15,12 @@ class User(Base):
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     first_name: Mapped[str | None] = mapped_column(String(100))
     house_id: Mapped[int | None] = mapped_column(ForeignKey("houses.id", ondelete="SET NULL"))
-    full_name: Mapped[str | None] = mapped_column(String(200))
-    phone: Mapped[str | None] = mapped_column(String(32))
-    email: Mapped[str | None] = mapped_column(String(200))
-    apartment: Mapped[str | None] = mapped_column(String(16))
-    entrance: Mapped[str | None] = mapped_column(String(8))
-    custom_address: Mapped[str | None] = mapped_column(String(500))
+    full_name: Mapped[str | None] = mapped_column(EncryptedString)
+    phone: Mapped[str | None] = mapped_column(EncryptedString)
+    email: Mapped[str | None] = mapped_column(EncryptedString)
+    apartment: Mapped[str | None] = mapped_column(EncryptedString)
+    entrance: Mapped[str | None] = mapped_column(EncryptedString)
+    custom_address: Mapped[str | None] = mapped_column(EncryptedString)
     custom_company_name: Mapped[str | None] = mapped_column(String(300))
     management_company_id: Mapped[int | None] = mapped_column(
         ForeignKey("management_companies.id", ondelete="SET NULL")

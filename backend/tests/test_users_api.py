@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.issues.models import Photo
 from app.modules.users.models import User
-from tests.conftest import Account
+from tests.conftest import PNG, Account
 
 
 async def house_with_company(client: httpx.AsyncClient) -> dict:
@@ -75,7 +75,7 @@ async def test_delete_account_removes_everything(
 async def test_delete_account_removes_photo_files(
     client: httpx.AsyncClient, session: AsyncSession, anna: Account
 ):
-    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+    png = PNG
     await client.post("/photos", files={"file": ("a.png", png, "image/png")}, headers=anna.headers)
     path = Path(await session.scalar(select(Photo.path)))
     assert path.is_file()  # noqa: ASYNC240
@@ -156,7 +156,7 @@ async def test_export_contains_all_own_data(
     await client.put("/users/me/profile", json={"full_name": "Иванов"}, headers=anna.headers)
     await client.post("/issues", json={"category": "graffiti"}, headers=anna.headers)
     await client.post("/receipts/samples/2026-10", headers=anna.headers)
-    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8
+    png = PNG
     await client.post("/photos", files={"file": ("a.png", png, "image/png")}, headers=anna.headers)
     await client.post("/issues", json={"category": "pothole"}, headers=boris.headers)
     data = (await client.get("/users/me/export", headers=anna.headers)).json()

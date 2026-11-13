@@ -1,192 +1,104 @@
+<div align="center">
+
+<img src="frontend/public/favicon.svg" width="96" alt="Ладно">
+
 # Ладно
 
-Помощник жителя Владивостока по ЖКХ.
+**Помощник жителя Владивостока по ЖКХ: куда пожаловаться и что в квитанции**
 
-- **Кому пожаловаться.** Опишите проблему дома или двора словами или фото: сервис определит категорию, задаст уточняющие вопросы и по правилам региона назовёт адресата, нормы и срок ответа. Затем подготовит текст обращения и поможет подать его через «Решаем вместе». Если ответа нет, обращение можно эскалировать на следующую ступень.
-- **Разбор квитанции.** Начисления простым языком, сравнение двух месяцев (что выросло и почему: тариф, объём, норматив), проверка по тарифам региона и готовое заявление на перерасчёт.
-- **Мой дом и данные для писем.** Адрес, подъезд, управляющая компания дома, а также необязательные ФИО, телефон, e-mail и квартира хранятся в профиле на сервере: работа продолжается с любого устройства, в том числе в боте. Данные сохраняются только после согласия на обработку (иначе 403 `consent_required`); их можно выгрузить (`GET /api/users/me/export`) и удалить вместе с аккаунтом (`DELETE /api/users/me`). Код подставляет их в письма из шаблонов, в языковую модель они не попадают, в логи тоже.
-- **Ассистент.** Отвечает на вопросы по этим двум темам с опорой на справочник региона, обращения и последние квитанции жителя.
+[![CI](https://github.com/vladislavshityi/ladno/actions/workflows/ci.yml/badge.svg)](https://github.com/vladislavshityi/ladno/actions/workflows/ci.yml)
+[![Deploy](https://github.com/vladislavshityi/ladno/actions/workflows/deploy.yml/badge.svg)](https://github.com/vladislavshityi/ladno/actions/workflows/deploy.yml)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Telegram](https://img.shields.io/badge/Telegram-Mini_App-26A5E4?logo=telegram&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
-Адресатов, нормы, сроки и суммы определяет код по данным региона. Языковая модель только классифицирует, пересказывает и объясняет, а числа в её текстах сверяются с расчётами. Без модели всё работает на шаблонах, кроме разбора фото квитанции и ассистента.
+[Бот @ladnovl_bot](https://t.me/ladnovl_bot)
 
-Backend и frontend лежат в этом репозитории; Telegram-бот добавится рядом: `docker-compose.yml` и CI рассчитаны на новые сервисы.
+</div>
+
+## Что умеет
+
+| | |
+|---|---|
+| 📸 **Кому пожаловаться?** | Фото и пара слов → категория, адресат по правилам региона, нормы, срок ответа и готовый текст обращения для «Решаем вместе». Нет ответа — эскалация на следующую ступень. |
+| 🧾 **Объясни мою квитанцию** | Начисления простым языком, сравнение месяцев (тариф, объём или норматив), проверка по тарифам региона и заявление на перерасчёт. |
+| 🏠 **Мой дом** | Адрес, управляющая компания и данные для писем — один профиль для сайта и Telegram. |
+| 🤖 **Бот** | Открывает Mini App, показывает обращения и напоминает, когда срок ответа истёк. |
+
+Адресатов, нормы, сроки и суммы определяет код по справочникам региона. Языковая модель только распознаёт, пересказывает и объясняет; числа в её текстах сверяются с расчётами. Без модели сервис работает на шаблонах.
 
 ## Архитектура
 
-Модульный монолит на FastAPI, SQLAlchemy 2 (asyncpg) и PostgreSQL, миграции Alembic.
-
 ```
-frontend/                     React-приложение, Dockerfile (сборка и nginx), nginx.conf
-backend/
-  data/regions/vladivostok/   справочники региона: YAML, дома и УК в CSV
-  data/samples/receipts/      демо-квитанции
-  templates/                  Jinja2-шаблоны писем, шагов подачи и пояснений
-  alembic/                    миграции
-  src/app/
-    main.py                   сборка приложения
-    seed.py                   python -m app.seed: загрузка домов и УК
-    core/                     config, db, security (JWT), deps, errors, schemas, region (справочники), files, text, templates
-    llm/                      client (LLMClient, OpenAI-совместимый клиент, Ollama), structured (JSON-ответы)
-    modules/
-      auth/                   вход через Telegram, выдача JWT
-      users/                  профиль «Мой дом», согласие на обработку данных, удаление аккаунта
-      houses/                 поиск адреса, дома, управляющие компании, сид
-      issues/                 обращения: классификация, маршрут, тексты, подача, эскалация, фото
-      receipts/               квитанции: разбор, пояснения, сравнение, проверка, письмо на перерасчёт
-      assistant/              чат-ассистент со стримингом
-      bot/                    служебный API для Telegram-бота
-  tests/
+Telegram ──► bot ──────────────────────────► backend ──► PostgreSQL
+Браузер / Mini App ─► caddy ─► frontend (nginx) ─/api─┘
 ```
 
-Каждый модуль устроен одинаково: `router` (HTTP), `service` (логика), `models` (таблицы), `schemas` (контракт). Чистые функции без IO вынесены в отдельные файлы и покрыты тестами: `issues/rules.py` и `deadlines.py` (маршрут и сроки), `houses/address_search.py` (поиск адреса), `receipts/calc.py`, `diff.py`, `overcharge.py`, `tariffs.py` (расчёты на `Decimal`), `auth/telegram.py` (проверка подписи), `core/text.py` (проверка чисел в текстах модели).
+| Часть | Стек |
+|---|---|
+| `backend/` | FastAPI, SQLAlchemy 2 (asyncpg), Alembic, uv, ruff, pytest. Модули `auth`, `users`, `houses`, `issues`, `receipts`, `assistant`, `bot`; в каждом `router` → `service` → `models` / `schemas` |
+| `frontend/` | React 19, Vite, TypeScript, Tailwind v4, shadcn/ui, TanStack Query; типы из OpenAPI |
+| `bot/` | aiogram 3, long polling, служебный API backend |
+| LLM | любой OpenAI-совместимый API или локальная Ollama (`LLM_PROVIDER`) |
 
-Контракт API описывает OpenAPI: `/docs` и `/openapi.json`. Ошибки всегда в формате `{"detail": "...", "code": "..."}`. Названия операций короткие (`create_issue`, `login_widget`), по схеме можно генерировать клиент.
-
-## Запуск через Docker Compose
+## Быстрый старт
 
 ```bash
-cp .env.example .env        # задайте POSTGRES_PASSWORD и JWT_SECRET
-docker compose up -d --build
+cp .env.example .env          # POSTGRES_PASSWORD, JWT_SECRET, PII_ENCRYPTION_KEY
+docker compose up -d --build  # сайт http://localhost:8080, Swagger http://localhost:8000/docs
 ```
 
-Сайт открывается на http://localhost:8080 (порт задаёт `FRONTEND_PORT`). nginx во frontend отдаёт SPA и проксирует `/api/` в backend, поэтому браузер работает с одним origin и CORS не нужен. Проверка: `curl http://localhost:8080/api/health`.
+Вход без Telegram для разработки: `APP_ENV=dev` и `POST /api/auth/dev {"telegram_id": 1}`.
 
-Контейнер backend перед стартом применяет миграции и загружает справочники (`alembic upgrade head`, `python -m app.seed`), обе команды можно запускать повторно. Порт backend открыт только на `127.0.0.1:${BACKEND_PORT}` и нужен для разработки: в проде к нему будет ходить frontend. Фото обращений лежат в томе `uploads`.
-
-Локальная модель через Ollama запускается профилем:
+<details>
+<summary>Разработка и тесты</summary>
 
 ```bash
-docker compose --profile ollama up -d
-docker compose exec ollama ollama pull qwen2.5:3b
+cd backend  && uv sync && uv run ruff check && uv run pytest
+cd frontend && npm ci && npm run lint && npm run typecheck && npm test
+cd bot      && uv sync && uv run ruff check && uv run pytest
 ```
 
-В `.env`: `LLM_PROVIDER=ollama`. Для разбора фото нужна модель с поддержкой изображений.
+Локальная модель: `docker compose --profile ollama up -d`, затем `LLM_PROVIDER=ollama`.
+</details>
 
-## Разработка
+## Безопасность и персональные данные
 
-Нужны [uv](https://docs.astral.sh/uv/) и запущенный PostgreSQL (`docker compose up -d db`).
-
-```bash
-cd backend
-uv sync
-uv run alembic upgrade head
-uv run python -m app.seed
-uv run uvicorn app.main:app --reload
-```
-
-Вход без Telegram при `APP_ENV=dev`: `POST /api/auth/dev` с `{"telegram_id": 1}` возвращает JWT. В `prod` этот эндпоинт отвечает 404.
-
-Новая миграция: `uv run alembic revision --autogenerate -m "описание"`, затем проверьте файл и `uv run alembic check`.
-
-## Тесты и стиль
-
-```bash
-cd backend
-uv run ruff check && uv run ruff format --check
-uv run pytest
-```
-
-Тесты используют отдельную БД `<имя>_test`: она создаётся заново при каждом запуске из тех же миграций, справочники загружаются из CSV. Языковая модель в тестах подменена фейком без сети.
-
-## Конфигурация
-
-Переменные окружения или `.env` в корне репозитория (шаблон в `.env.example`).
-
-| Переменная | По умолчанию | Назначение |
-|---|---|---|
-| `APP_ENV` | `prod` | `dev` включает вход без Telegram |
-| `DATABASE_URL` | `postgresql+asyncpg://ladno:ladno@localhost:5432/ladno` | подключение к PostgreSQL |
-| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | `ladno`, обязателен, `ladno` | учётные данные БД в compose |
-| `JWT_SECRET` | заглушка для dev | секрет подписи токенов; при `APP_ENV=prod` без своего значения приложение не стартует |
-| `JWT_EXPIRE_MINUTES` | `10080` | срок жизни токена, 7 суток |
-| `CORS_ORIGINS` | `http://localhost:5173,http://localhost:8080` | адреса фронтенда через запятую |
-| `TELEGRAM_BOT_TOKEN` | пусто | токен бота: по нему проверяется подпись входа |
-| `TELEGRAM_BOT_USERNAME` | пусто | имя бота для Login Widget |
-| `TELEGRAM_AUTH_MAX_AGE_SECONDS` | `86400` | сколько действительны данные входа Telegram |
-| `BOT_API_TOKEN` | пусто | общий секрет бота для `/api/bot/*`; пусто — служебный API закрыт |
-| `LLM_PROVIDER` | `none` | `openai`, `ollama` или `none` |
-| `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` | пусто | OpenAI-совместимый API |
-| `OLLAMA_BASE_URL`, `OLLAMA_MODEL` | `http://localhost:11434`, `qwen2.5:3b` | локальная модель |
-| `LLM_TIMEOUT_SECONDS` | `60` | таймаут запроса к модели |
-| `LLM_REQUESTS_PER_MINUTE` | `20` | лимит запросов к LLM на пользователя (классификация, квитанция, ассистент), иначе 429 `rate_limited`; счётчик в памяти процесса |
-| `REGION` | `vladivostok` | каталог справочников в `backend/data/regions` |
-| `UPLOAD_DIR` | `backend/uploads` | хранилище фото обращений |
-| `POS_URL`, `POS_TEXT_LIMIT` | `https://pos.gosuslugi.ru/`, `1000` | ссылка и лимит текста для «Решаем вместе» |
-| `GIS_ZHKH_URL` | `https://dom.gosuslugi.ru/` | альтернативный канал подачи |
-| `CONSENT_VERSION` | `2026-11` | актуальная версия согласия на обработку данных |
-| `BACKEND_PORT` | `8000` | порт на `127.0.0.1` для docker compose |
-
-## Языковая модель
-
-`LLM_PROVIDER` выбирает клиента:
-
-- `openai`: любой сервис с OpenAI-совместимым `/chat/completions`. Задайте `LLM_BASE_URL` (например, `https://api.openai.com/v1`), `LLM_API_KEY` и `LLM_MODEL`. Модель должна понимать изображения, если нужны классификация по фото и разбор квитанций.
-- `ollama`: локальная модель (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`), сервис `ollama` в compose под профилем.
-- `none`: модель не используется.
-
-Что делает модель: определяет категорию по тексту и фото, пишет абзац «суть обращения», разбирает фото квитанции, объясняет строки и разницу между месяцами, отвечает в ассистенте. Чего она не делает: не выбирает адресата, нормы и сроки (они из YAML региона), не считает деньги. Числа в текстах модели сверяются с расчётами кода, при расхождении берётся шаблон. Аварии (газ, затопление, искрение) определяет код по справочнику, телефоны служб тоже из справочника. В запросах нет ФИО, телефона, e-mail, квартиры и полного лицевого счёта; квитанция уходит модели как изображение, а на сервере не хранится.
-
-Без модели категорию выбирают вручную, строки квитанции объясняются шаблонами из тарифов, демо-квитанции работают, а разбор своей квитанции по фото и ассистент отвечают 503 с понятным текстом.
-
-## Авторизация
-
-Только Telegram.
-
-- `POST /api/auth/telegram/widget`: данные Login Widget на сайте. Подпись: секрет `SHA256(bot_token)`, HMAC-SHA256 от отсортированных полей, проверяется срок `auth_date`.
-- `POST /api/auth/telegram/webapp`: `initData` Mini App. Секрет `HMAC_SHA256("WebAppData", bot_token)`.
-- `GET /api/auth/config`: имя бота для виджета и флаг dev-входа.
-
-В ответ приходит JWT. Из профиля Telegram сохраняется только имя для обращения (`first_name`): без username и фото. Служебные эндпоинты бота `/api/bot/*` защищены общим секретом `BOT_API_TOKEN`.
+- **Вход только через Telegram**: подпись Login Widget и `initData` проверяется по HMAC и сроку `auth_date`, дальше работает JWT. Из Telegram сохраняется только имя.
+- **Шифрование в БД**: ФИО, телефон, email, квартира, подъезд и адрес хранятся зашифрованными (Fernet, ключ `PII_ENCRYPTION_KEY`). Лицевой счёт хранится только последними четырьмя цифрами.
+- **Фото**: формат определяется по содержимому, EXIF с координатами вырезается, файлы видит только владелец.
+- **Языковая модель** не получает ФИО, телефон, квартиру и полный лицевой счёт. Чтобы данные не покидали сервер, используйте локальную Ollama.
+- **Согласие на обработку ПД** обязательно (152-ФЗ); данные можно выгрузить и удалить вместе с аккаунтом.
+- **Инъекции**: SQL строится только через ORM с параметрами, ввод проверяет Pydantic, HTML не вставляется в разметку, запросы к LLM ограничены по частоте.
+- **Периметр**: наружу открыт только Caddy (HTTPS, HSTS, CSP); БД и backend доступны лишь внутри сети compose; в prod без своих секретов приложение не стартует.
 
 ## Источники данных
 
-Данные лежат в репозитории, при работе сервис ничего не скачивает.
+Справочники лежат в репозитории, при работе сервис ничего не скачивает.
 
-| Данные | Источник | Условия |
-|---|---|---|
-| Дома Владивостока (`houses.csv`) | ГАР ФНС, fias.nalog.ru | открытые данные ФНС России |
-| Связь домов с УК | ГИС ЖКХ, dom.gosuslugi.ru | открытые данные |
-| Управляющие компании (`management_companies.csv`) | Реформа ЖКХ (реестр управляющих организаций), сверка с ЕГРЮЛ (egrul.nalog.ru) и страницами УК на vl.ru | открытые данные; ЕГРЮЛ — общедоступные сведения ФНС |
-| Координаты домов | OpenStreetMap (геокодер Photon) | © участники OpenStreetMap, лицензия ODbL |
-| Тарифы и нормы (`tariffs.yaml`, `rules.yaml`) | постановления региональной службы по тарифам и федеральные акты (ПП РФ № 354, 491, 290, 59-ФЗ) | официальные документы; значения без подтверждения первоисточником помечены `verified: false` |
-| Контакты адресатов (`addressees.yaml`) | сайты администрации Владивостока, ГЖИ Приморского края, ВПЭС, Приморского водоканала, ДГК, Приморского экологического оператора | у каждой записи указан источник; часть контактов нужно сверить вручную |
-| Контакты УК | vl.ru | публичные карточки организаций |
+| Данные | Источник |
+|---|---|
+| Дома Владивостока | [ГАР ФНС](https://fias.nalog.ru) — открытые данные |
+| Связь дом → УК | [ГИС ЖКХ](https://dom.gosuslugi.ru), дополнено карточками [vl.ru](https://www.vl.ru); источник показывается пользователю |
+| Управляющие компании | [Реформа ЖКХ](https://www.reformagkh.ru), сверка с ЕГРЮЛ |
+| Тарифы | постановления Агентства по тарифам Приморского края |
+| Нормы и сроки | ЖК РФ, ПП РФ № 354, 290, 491, 59-ФЗ |
+| Адресаты | официальные сайты администрации, ГЖИ Приморского края и ресурсоснабжающих организаций |
 
-Демо-квитанции в `backend/data/samples/receipts` собраны вручную по реальным тарифам и не содержат персональных данных.
+Значения, ещё не сверенные с текстом первоисточника, помечены в YAML `verified: false`.
 
-
-## Фронтенд
-
-React 19, Vite, TypeScript, Tailwind CSS v4, shadcn/ui, TanStack Query, React Router. Типы API генерируются из OpenAPI. Тема светлая и тёмная; внутри Telegram Mini App берётся тема Telegram, а навигация становится нижней панелью.
-
-```
-frontend/src/
-  components/     общие компоненты: сайдбар, шапка, логотип, диалоги; ui/ — shadcn
-  features/       auth, landing, profile, houses, issues, receipts, assistant, legal
-    <feature>/    api.ts (запросы), hooks.ts (TanStack Query), components/, pages/
-  lib/            api-client, query-client, query-keys, auth-token, telegram, dates, money, design
-  types/          api.ts (сгенерирован), models.ts (короткие имена схем)
-  routes.tsx      маршруты и защита по входу и согласию
-```
-
-Разработка с прокси на backend (`docker compose up -d backend db`):
+## Деплой
 
 ```bash
-cd frontend
-npm ci
-npm run dev          # http://localhost:5173, /api проксируется на localhost:8000 (BACKEND_URL меняет адрес)
-npm run lint && npm run typecheck && npm test && npm run build
-npm run gen:api      # обновить src/types/api.ts из http://127.0.0.1:8000/openapi.json
+git clone https://github.com/vladislavshityi/ladno.git /opt/ladno && cd /opt/ladno
+cp .env.example .env   # APP_ENV=prod, DOMAIN, PUBLIC_URL, секреты и токены
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-Сгенерированный `src/types/api.ts` коммитится; после изменения схем backend запустите `gen:api`.
+Caddy сам получает сертификат для `DOMAIN`. В @BotFather выполните `/setdomain`. Push в `main` после зелёного CI публикует образы в GHCR и обновляет сервер по SSH; для этого нужны секреты `DEPLOY_HOST`, `DEPLOY_USER` и `DEPLOY_SSH_KEY`.
 
-Юридические тексты лежат в `frontend/src/features/legal/`. Перед запуском замените поля `[Наименование/ФИО оператора]`, `[e-mail для обращений]` и `[уточнить место размещения сервера]`. Версия согласия `CONSENT_VERSION` во `versions.ts` должна совпадать с `CONSENT_VERSION` backend.
-
-## Вход через Telegram
-
-1. Создайте бота в @BotFather командой `/newbot` и получите токен.
-2. Задайте в `.env` `TELEGRAM_BOT_TOKEN` и `TELEGRAM_BOT_USERNAME` (имя без `@`).
-3. Для кнопки входа на сайте привяжите домен: в @BotFather `/setdomain`, выберите бота и укажите домен сайта. Telegram Login Widget не работает на `localhost`, поэтому локально используйте вход для разработки (`APP_ENV=dev`).
-4. Для Mini App в @BotFather настройте кнопку меню или Web App с адресом сайта: приложение само определит `Telegram.WebApp.initData` и войдёт через `/api/auth/telegram/webapp`.
-5. Перезапустите backend: `docker compose up -d backend`.
+Резервная копия: `docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > ladno.sql.gz`. Ключ `PII_ENCRYPTION_KEY` храните отдельно: без него зашифрованные поля не восстановить.

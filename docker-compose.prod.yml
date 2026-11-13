@@ -1,0 +1,38 @@
+# Прод-конфигурация поверх docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Образы берутся из GHCR; чтобы собрать их на сервере, добавьте --build.
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?задайте DOMAIN в .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+
+  db:
+    # Вместо 127.0.0.1:5432 из основного файла: в проде БД доступна только внутри сети compose.
+    ports: !reset []
+
+  backend:
+    image: ghcr.io/vladislavshityi/ladno-backend:${TAG:-latest}
+    ports: !reset []
+
+  frontend:
+    image: ghcr.io/vladislavshityi/ladno-frontend:${TAG:-latest}
+    ports: !reset []
+
+  bot:
+    image: ghcr.io/vladislavshityi/ladno-bot:${TAG:-latest}
+
+volumes:
+  caddy-data:
+  caddy-config:
