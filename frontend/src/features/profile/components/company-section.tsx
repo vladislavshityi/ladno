@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CompanyPicker } from '@/features/houses/components/company-picker'
+import { CompanyRatingBadge } from '@/features/ratings/components/company-rating-badge'
 import { openExternal } from '@/lib/telegram'
 import type { ManagementCompany, User } from '@/types/models'
 import { useUpdateProfile } from '../hooks'
@@ -41,6 +42,7 @@ export function CompanySection({ me }: { me: User }) {
               <Badge variant="secondary" className="font-normal">
                 {company.source ? SOURCE_LABELS[company.source] : 'Выбрана вами'}
               </Badge>
+              <CompanyRatingBadge companyId={company.id} />
               <ul className="space-y-1 pt-1 text-sm text-muted-foreground">
                 {company.phones.length > 0 && (
                   <li className="flex items-center gap-2"><Phone className="size-3.5" />{company.phones.join(', ')}</li>

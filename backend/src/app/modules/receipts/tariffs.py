@@ -31,6 +31,23 @@ def reference_tariffs(tariffs: dict[str, Any], period: str) -> dict[str, list[De
     return result
 
 
+def service_options(tariffs: dict[str, Any], period: str) -> list[dict[str, Any]]:
+    """Услуги для ручного ввода; tariff подставляется, только если на месяц он один однозначный."""
+    reference = reference_tariffs(tariffs, period)
+    options = []
+    for item in tariffs.get("services", []):
+        values = reference.get(item["code"], [])
+        options.append(
+            {
+                "service_code": item["code"],
+                "name": item["name"],
+                "unit": item["unit"],
+                "tariff": values[0] if len(values) == 1 else None,
+            }
+        )
+    return options
+
+
 def unverified_services(tariffs: dict[str, Any], period: str) -> set[str]:
     """Услуги, тариф которых не подтверждён первоисточником: выводы по ним менее уверенные."""
     return {entry["service_code"] for entry, p in _active(tariffs, period) if not p["verified"]}

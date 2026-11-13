@@ -17,6 +17,8 @@ export interface WizardData {
   photos: PickedPhoto[]
   classification: Classification | null
   category: string | null
+  /** Category chosen outside the wizard (e.g. on the map); it wins over the classifier. */
+  presetCategory: string | null
   answers: Record<string, string>
   alreadyContactedUk: boolean | null
   /** Overrides the house from the profile. */
@@ -49,6 +51,7 @@ export const EMPTY_WIZARD: WizardData = {
   photos: [],
   classification: null,
   category: null,
+  presetCategory: null,
   answers: {},
   alreadyContactedUk: null,
   house: null,

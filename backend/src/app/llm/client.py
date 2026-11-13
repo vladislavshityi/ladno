@@ -32,6 +32,15 @@ def _map_transport_errors() -> Iterator[None]:
         raise ServiceUnavailable(UNAVAILABLE, "llm_unavailable") from exc
 
 
+@contextmanager
+def _unexpected_answer() -> Iterator[None]:
+    """Тело ответа не того вида: для вызывающего это такая же ошибка модели."""
+    try:
+        yield
+    except (ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:
+        raise BadGateway("Модель вернула неожиданный ответ", "llm_error") from exc
+
+
 def _raise_for_status(response: httpx.Response) -> None:
     if response.is_error:
         raise BadGateway(f"Модель вернула ошибку {response.status_code}", "llm_error")
@@ -71,7 +80,8 @@ class OpenAICompatibleClient:
                     "/chat/completions", json=self._payload(messages, model, **extra)
                 )
         _raise_for_status(response)
-        return response.json()["choices"][0]["message"]["content"] or ""
+        with _unexpected_answer():
+            return response.json()["choices"][0]["message"]["content"] or ""
 
     async def stream(self, messages: list[Message]) -> AsyncIterator[str]:
         payload = self._payload(messages, stream=True)
@@ -142,7 +152,8 @@ class OllamaClient:
             async with httpx.AsyncClient(**self._http) as client:
                 response = await client.post("/api/chat", json=payload)
         _raise_for_status(response)
-        return response.json().get("message", {}).get("content", "")
+        with _unexpected_answer():
+            return response.json().get("message", {}).get("content", "")
 
     async def stream(self, messages: list[Message]) -> AsyncIterator[str]:
         with _map_transport_errors():
@@ -168,6 +179,14 @@ def get_llm() -> LLMClient | None:
             s.llm_base_url, s.llm_api_key, s.llm_model, s.llm_timeout_seconds
         )
     return None
+
+
+def vision_available() -> bool:
+    """Есть ли модель, понимающая изображения: в API-режиме та же, что для текста."""
+    s = get_settings()
+    if s.llm_provider == "ollama":
+        return bool(s.ollama_vision_model or s.ollama_model)
+    return get_llm() is not None
 
 
 def vision_model() -> str | None:

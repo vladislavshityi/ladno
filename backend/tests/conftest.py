@@ -31,7 +31,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
 from PIL import Image
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -44,7 +44,10 @@ from app.core.db import get_session
 from app.core.rate_limit import reset_rate_limits
 from app.llm.client import get_llm
 from app.main import create_app
+from app.modules.houses.models import House
 from app.modules.houses.service import seed_houses
+from app.modules.ratings import service as ratings
+from app.modules.users.models import User
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
@@ -116,6 +119,11 @@ class FakeLLM:
 @pytest.fixture(autouse=True)
 def _fresh_rate_limits() -> None:
     reset_rate_limits()
+
+
+@pytest.fixture(autouse=True)
+def _fresh_ratings_cache() -> None:
+    ratings.reset_cache()
 
 
 @pytest.fixture
@@ -198,3 +206,23 @@ def prod_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     yield
     monkeypatch.undo()
     get_settings.cache_clear()
+
+
+@pytest_asyncio.fixture
+async def house(session: AsyncSession) -> House:
+    """Дом из справочника с известными УК и координатами."""
+    found = await session.scalars(
+        select(House)
+        .where(House.management_company_id.is_not(None), House.lat.is_not(None))
+        .order_by(House.id)
+        .limit(1)
+    )
+    return found.one()
+
+
+@pytest_asyncio.fixture
+async def resident(session: AsyncSession) -> User:
+    user = User(telegram_id=-777)
+    session.add(user)
+    await session.flush()
+    return user

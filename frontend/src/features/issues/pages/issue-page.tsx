@@ -4,6 +4,9 @@ import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
+import { useCapabilities } from '@/features/meta/hooks'
+import { useHouse } from '@/features/houses/hooks'
+import { CompanyRatingBadge } from '@/features/ratings/components/company-rating-badge'
 import { DownloadButtons } from '../components/download-buttons'
 import { IssueActions } from '../components/issue-actions'
 import { IssueHeader } from '../components/issue-header'
@@ -18,6 +21,8 @@ import { useIssue } from '../hooks'
 export default function IssuePage() {
   const { id = '' } = useParams()
   const { data: issue, isError } = useIssue(id)
+  const { llm } = useCapabilities()
+  const { data: house } = useHouse(issue?.house_id)
 
   if (isError) {
     return (
@@ -41,12 +46,15 @@ export default function IssuePage() {
           <ArrowLeft /> Все обращения
         </Link>
       </Button>
-      <Button asChild variant="outline" size="sm" className="justify-self-start rounded-full">
-        <Link to={`/assistant?issue=${issue.id}`}>
-          <Sparkles /> Спросить ассистента
-        </Link>
-      </Button>
+      {llm && (
+        <Button asChild variant="outline" size="sm" className="justify-self-start rounded-full">
+          <Link to={`/assistant?issue=${issue.id}`}>
+            <Sparkles /> Спросить ассистента
+          </Link>
+        </Button>
+      )}
       <IssueHeader issue={issue} />
+      <CompanyRatingBadge companyId={house?.management_company?.id} />
       <MissingDataAlert issue={issue} />
       {issue.status === 'draft' && <SubmitPanel issue={issue} />}
       <IssueActions issue={issue} />

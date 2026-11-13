@@ -51,6 +51,12 @@ async def test_companies_list_and_search(client: httpx.AsyncClient):
     assert (await client.get("/management-companies", params={"q": "%_zzz"})).json() == []
 
 
+async def test_companies_found_by_inn(client: httpx.AsyncClient):
+    found = (await client.get("/management-companies", params={"inn": "2537068720"})).json()
+    assert [c["name"] for c in found] == ["ООО «ДВКС»"]
+    assert (await client.get("/management-companies", params={"inn": "0000000000"})).json() == []
+
+
 @pytest.mark.parametrize("source", ["gis_zhkh", "vl_ru"])
 async def test_company_source_comes_from_house_link(
     client: httpx.AsyncClient, session: AsyncSession, source: str

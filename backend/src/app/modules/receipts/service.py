@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import files
 from app.core.db import utcnow
 from app.core.errors import (
+    AppError,
     BadGateway,
     NotFound,
     PayloadTooLarge,
@@ -16,6 +17,7 @@ from app.core.errors import (
     UnsupportedMedia,
 )
 from app.llm.client import LLMClient
+from app.llm.fallbacks import record_fallback
 from app.modules.receipts import explain, samples, schemas
 from app.modules.receipts import parsing as llm_parsing
 from app.modules.receipts.calc import ZERO, LineData, ReceiptData
@@ -165,9 +167,20 @@ async def upload(
         )
     try:
         parsed = await llm_parsing.extract_receipt(llm, data, content_type)
+    except AppError:
+        record_fallback("receipt_parse")  # фронтенд предложит ввести квитанцию вручную
+        raise
     except (ValidationError, ValueError) as exc:
+        record_fallback("receipt_parse")
         raise BadGateway("Не удалось разобрать квитанцию", "receipt_parse_failed") from exc
     return await _store(session, user_id, llm, parsed)
+
+
+async def create_manual(
+    session: AsyncSession, user_id: uuid.UUID, llm: LLMClient | None, data: schemas.ManualReceipt
+) -> Receipt:
+    """Квитанция, введённая вручную: те же проверки и предупреждения, что у разобранной."""
+    return await _store(session, user_id, llm, ParsedReceipt.model_validate(data.model_dump()))
 
 
 async def load_sample(

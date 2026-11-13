@@ -16,6 +16,9 @@ from app.modules.bot.router import router as bot_router
 from app.modules.houses.router import router as houses_router
 from app.modules.issues.photos import router as photos_router
 from app.modules.issues.router import router as issues_router
+from app.modules.map.router import router as map_router
+from app.modules.meta.router import router as meta_router
+from app.modules.ratings.router import router as ratings_router
 from app.modules.receipts.router import router as receipts_router
 from app.modules.submissions.router import router as submissions_router
 from app.modules.users.router import router as users_router
@@ -69,6 +72,9 @@ def create_app() -> FastAPI:
         receipts_router,
         assistant_router,
         bot_router,
+        ratings_router,
+        map_router,
+        meta_router,
     ):
         api.include_router(router)
 

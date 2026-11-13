@@ -1,23 +1,26 @@
-"""Классификация проблемы по тексту: LLM выбирает только категорию, аварии ищет код."""
+"""Классификация проблемы по тексту: LLM выбирает только категорию, аварии ищет код.
+
+Без модели, при её сбое или сомнении категорию подбирают ключевые слова из справочника.
+"""
 
 import base64
 import json
-import logging
 
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 from app.core.errors import AppError
 from app.core.region import get_region
 from app.llm.client import LLMClient, Message, vision_model
+from app.llm.fallbacks import record_fallback
 from app.llm.structured import ask_json
+from app.modules.issues.keywords import match_category
 from app.modules.issues.schemas import Classification, Contact, Emergency
-
-log = logging.getLogger(__name__)
 
 # (содержимое, MIME-тип) загруженного фото
 Image = tuple[bytes, str]
 
 MIN_CONFIDENCE = 0.6
+KEYWORD_CONFIDENCE = 0.6  # ключевые слова надёжны меньше модели: пользователь подтвердит выбор
 DEFAULT_EMERGENCY_REASON = "Похоже на аварию"
 
 _SYSTEM = (
@@ -96,23 +99,33 @@ async def _ask_llm(llm: LLMClient, text: str, images: list[Image]) -> LLMAnswer 
     try:
         return await ask_json(llm, messages, _ANSWER, vision_model() if images else None)
     except (AppError, ValidationError, ValueError):
-        log.warning("Классификация не удалась, нужен ручной выбор")
+        record_fallback("classify")
         return None
 
 
+def _by_keywords(text: str) -> Classification:
+    keywords = {c["id"]: c.get("keywords", []) for c in get_region().categories}
+    category = match_category(text, keywords)
+    if category is None:
+        return Classification(needs_manual_choice=True)
+    return Classification(category=category, confidence=KEYWORD_CONFIDENCE)
+
+
 async def classify(llm: LLMClient | None, text: str, images: list[Image]) -> Classification:
-    """Без модели, при сбое или сомнении модели — ручной выбор категории."""
+    """Ответ модели, если она уверена; иначе ключевые слова, а при сомнении — ручной выбор."""
     answer = await _ask_llm(llm, text, images) if llm else None
     emergency = _emergency(emergency_rule(text), bool(answer and answer.is_emergency))
     clarification = (answer.clarification.strip() if answer else "") or None
     known = answer is not None and get_region().category(answer.category or "") is not None
-    if answer is None or not known or answer.confidence < MIN_CONFIDENCE:
-        result = Classification(needs_manual_choice=True, clarification=clarification)
-    else:
+    if answer is not None and known and answer.confidence >= MIN_CONFIDENCE:
         result = Classification(
             category=answer.category,
             confidence=answer.confidence,
             summary=answer.summary,
             clarification=clarification,
         )
+    else:
+        if answer is not None:
+            record_fallback("classify", "низкая уверенность")
+        result = _by_keywords(text).model_copy(update={"clarification": clarification})
     return _with_emergency(result, emergency)

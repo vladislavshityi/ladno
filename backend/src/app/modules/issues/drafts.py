@@ -1,7 +1,6 @@
 """Тексты обращения: абзац «суть» (LLM с проверками, иначе шаблон) и черновики из шаблонов."""
 
 import json
-import logging
 import re
 from datetime import date
 from typing import Any
@@ -12,12 +11,12 @@ from app.core.region import get_region
 from app.core.templates import render
 from app.core.text import numbers_are_supported, truncate
 from app.llm.client import LLMClient
+from app.llm.fallbacks import record_fallback
 from app.modules.issues.rules import HOUSING_INSPECTION, MANAGING_COMPANY
 from app.modules.issues.schemas import Addressee, Draft, RouteResult
 
-log = logging.getLogger(__name__)
-
 SUMMARY_MAX_CHARS = 600
+OTHER_CATEGORY = "other"
 _SUMMARY_PROMPT = (
     "Перескажи проблему жителя деловым языком от первого лица, 2–4 предложения. Главный источник — "
     "поле description (слова жителя), category и answers уточняют его. Адресат в поле addressee "
@@ -72,10 +71,13 @@ async def _llm_summary(
     try:
         text = (await llm.complete(messages)).strip()
     except AppError:
-        log.warning("Модель не написала суть обращения, берём шаблон")
+        record_fallback("summary")
         return None
     valid = 0 < len(text) <= SUMMARY_MAX_CHARS and numbers_are_supported(text, facts)
-    return text if valid and summary_fits(text, addressee.key) else None
+    if valid and summary_fits(text, addressee.key):
+        return text
+    record_fallback("summary", "текст модели не прошёл проверки")
+    return None
 
 
 async def build_summary(
@@ -89,7 +91,8 @@ async def build_summary(
     title, readable = category_title(category), readable_answers(category, answers)
     description = description.strip()
     text = await _llm_summary(llm, title, readable, addressee, description) if llm else None
-    return text or _template_summary(title, readable, description)
+    template_title = "" if category == OTHER_CATEGORY else title  # «Другое» ничего не поясняет
+    return text or _template_summary(template_title, readable, description)
 
 
 def _draft(template: str, context: dict[str, Any]) -> Draft:

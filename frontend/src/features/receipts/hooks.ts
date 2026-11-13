@@ -7,6 +7,9 @@ export const useReceipts = () => useQuery({ queryKey: qk.receipts, queryFn: rece
 
 export const useSamples = () => useQuery({ queryKey: qk.samples, queryFn: receiptsApi.samples, staleTime: Infinity })
 
+export const useServices = (period: string) =>
+  useQuery({ queryKey: qk.services(period), queryFn: () => receiptsApi.services(period), staleTime: Infinity })
+
 export const useReceipt = (id: string) => useQuery({ queryKey: qk.receipt(id), queryFn: () => receiptsApi.get(id) })
 
 function useReceiptWrite<V>(fn: (vars: V) => Promise<Receipt>) {
@@ -24,6 +27,8 @@ function useReceiptWrite<V>(fn: (vars: V) => Promise<Receipt>) {
 }
 
 export const useUploadReceipt = () => useReceiptWrite(receiptsApi.upload)
+
+export const useCreateManualReceipt = () => useReceiptWrite(receiptsApi.createManual)
 
 export const useLoadSample = () => useReceiptWrite(receiptsApi.loadSample)
 

@@ -62,6 +62,22 @@ finding_basis:
   unexplained_recalculation:
     - { text: "Исполнитель обязан указывать в платёжном документе основания и размер перерасчёта", source: "ПП РФ № 354", verified: false }
 
+# Услуги для ручного ввода квитанции: название и единица объёма в строке.
+services:
+  - { code: maintenance, name: Содержание жилого помещения, unit: м2 }
+  - { code: cold_water, name: Холодное водоснабжение, unit: м3 }
+  - { code: hot_water, name: Горячее водоснабжение, unit: м3 }
+  - { code: hot_water_heat, name: Подогрев воды (тепловая энергия), unit: Гкал }
+  - { code: sewerage, name: Водоотведение, unit: м3 }
+  - { code: heating, name: Отопление, unit: Гкал }
+  - { code: electricity, name: Электроэнергия, unit: кВт.ч }
+  - { code: gas, name: Газ, unit: м3 }
+  - { code: waste, name: Обращение с ТКО (вывоз мусора), unit: м2 }
+  - { code: capital_repair, name: Взнос на капитальный ремонт, unit: м2 }
+  - { code: common_property_resources, name: Коммунальные ресурсы на содержание общего имущества, unit: null }
+  - { code: intercom, name: Домофон, unit: null }
+  - { code: other, name: Прочее, unit: null }
+
 tariffs:
   - service_code: cold_water
     service_name: Холодное водоснабжение

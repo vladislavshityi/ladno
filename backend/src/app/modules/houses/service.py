@@ -65,8 +65,12 @@ async def get_house(session: AsyncSession, house_id: int) -> House:
     return house
 
 
-async def list_companies(session: AsyncSession, q: str | None) -> list[ManagementCompany]:
+async def list_companies(
+    session: AsyncSession, q: str | None, inn: str | None = None
+) -> list[ManagementCompany]:
     stmt = select(ManagementCompany).order_by(ManagementCompany.name).limit(COMPANIES_LIMIT)
+    if inn:
+        stmt = stmt.where(ManagementCompany.inn == inn)
     if q and q.strip():
         stmt = stmt.where(ManagementCompany.name.icontains(q.strip(), autoescape=True))
     return list((await session.scalars(stmt)).all())

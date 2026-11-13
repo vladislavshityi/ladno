@@ -19,6 +19,17 @@ export const STATUS_META: Record<IssueStatus, { label: string; tone: Tone }> = {
   rejected: { label: 'Не решено', tone: 'danger' },
 }
 
+/** Company rating colour: 70 and above is good, below 40 is bad. */
+export const scoreTone = (score: number): Tone => (score >= 70 ? 'success' : score >= 40 ? 'warning' : 'danger')
+
+export const SCORE_TEXT_CLASSES: Record<Tone, string> = {
+  neutral: 'text-muted-foreground',
+  info: 'text-primary',
+  warning: 'text-warning',
+  success: 'text-success',
+  danger: 'text-destructive',
+}
+
 export const ACTIVE_STATUSES: IssueStatus[] = ['submitted', 'in_progress']
 
 export const CALC_METHOD_LABELS = {

@@ -21,6 +21,8 @@ class IssueStatus(StrEnum):
 
 
 ACTIVE_STATUSES = (IssueStatus.SUBMITTED, IssueStatus.IN_PROGRESS)
+# Адресат дал ответ по существу: решил проблему или отказал.
+ANSWERED_STATUSES = (IssueStatus.RESOLVED, IssueStatus.REJECTED)
 
 
 class Photo(Base):
@@ -70,6 +72,8 @@ class Issue(Base):
     external_ref: Mapped[str | None] = mapped_column(String(100))
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Когда обращение получило ответ (решено или отказ): по нему считается рейтинг УК.
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[CreatedAt]
 

@@ -33,7 +33,7 @@ export function DescribeStep({ data, setData, onNext }: StepProps) {
           setData((d) => ({
             ...d,
             classification: result,
-            category: result.needs_manual_choice ? null : result.category,
+            category: d.presetCategory ?? (result.needs_manual_choice ? null : result.category),
             answers: {},
           }))
           onNext()

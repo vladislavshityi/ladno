@@ -102,6 +102,32 @@ class ParsedReceipt(BaseModel):
     warnings: list[str] = []  # что не удалось прочитать при разборе
 
 
+class ManualCompany(BaseModel):
+    name: str | None = Field(None, max_length=200)
+    inn: str | None = Field(None, pattern=r"^\d{10}(\d{2})?$")
+
+
+class ManualReceipt(BaseModel):
+    """Квитанция, введённая жителем вручную. Полный лицевой счёт и ФИО не принимаются."""
+
+    period: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="YYYY-MM")
+    management_company: ManualCompany | None = None
+    account_last4: str | None = Field(None, pattern=r"^\d{4}$", description="Последние 4 цифры")
+    area_m2: Money | None = None
+    residents: int | None = Field(None, ge=0, le=99)
+    lines: list[ParsedLine] = Field(min_length=1, max_length=50)
+    total: Money | None = Field(None, description="Итог к оплате; пусто — сумма строк")
+
+
+class ServiceOption(ApiModel):
+    service_code: ServiceCode
+    name: str
+    unit: str | None = None
+    tariff: Money | None = Field(
+        None, description="Тариф региона на период в единицах строки; пусто, если неоднозначен"
+    )
+
+
 class CompareLine(ApiModel):
     service_code: ServiceCode
     service_name: str

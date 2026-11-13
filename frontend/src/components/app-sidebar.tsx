@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { Logo } from '@/components/logo'
-import { NAV_ITEMS, type NavItemDef } from '@/components/nav-items'
+import { useNavItems, type NavItemDef } from '@/components/nav-items'
 import { UserMenu } from '@/components/user-menu'
 
 function NavItem({ to, label, icon: Icon }: NavItemDef) {
@@ -30,6 +30,7 @@ function NavItem({ to, label, icon: Icon }: NavItemDef) {
 }
 
 export function AppSidebar() {
+  const items = useNavItems()
   return (
     <Sidebar className="border-border">
       <SidebarHeader className="p-4">
@@ -41,7 +42,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => (
+              {items.map((item) => (
                 <NavItem key={item.to} {...item} />
               ))}
             </SidebarMenu>

@@ -1,5 +1,6 @@
 export const qk = {
   me: ['me'] as const,
+  faq: ['faq'] as const,
   authConfig: ['auth', 'config'] as const,
   addresses: (q: string) => ['addresses', q] as const,
   house: (id: number) => ['houses', id] as const,
@@ -14,7 +15,12 @@ export const qk = {
   receipts: ['receipts'] as const,
   receipt: (id: string) => ['receipts', id] as const,
   samples: ['receipts', 'samples'] as const,
+  services: (period: string) => ['receipts', 'services', period] as const,
   compare: (base: string, target: string) => ['receipts', 'compare', base, target] as const,
   compareExplanation: (base: string, target: string) => ['receipts', 'compare', base, target, 'explanation'] as const,
+  meta: ['meta'] as const,
+  ratings: (district: string, sort: string) => ['ratings', district, sort] as const,
+  rating: (companyId: number) => ['ratings', companyId] as const,
+  mapPoints: (filters: unknown) => ['map', 'points', filters] as const,
   check: (id: string) => ['receipts', id, 'check'] as const,
 }

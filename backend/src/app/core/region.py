@@ -1,4 +1,4 @@
-"""Справочники региона из data/regions/<region>/*.yaml: категории, правила, адресаты, тарифы."""
+"""Справочники региона (data/regions/<region>/*.yaml): категории, правила, адресаты, тарифы, FAQ."""
 
 from dataclasses import dataclass
 from functools import lru_cache
@@ -16,6 +16,7 @@ class Region:
     addressees: dict[str, Any]
     tariffs: dict[str, Any]
     classification: dict[str, Any]
+    faq: list[dict[str, Any]]
 
     def category(self, category_id: str) -> dict[str, Any] | None:
         return next((c for c in self.categories if c["id"] == category_id), None)
@@ -34,4 +35,5 @@ def get_region() -> Region:
         addressees=_read("addressees"),
         tariffs=_read("tariffs"),
         classification=_read("classification"),
+        faq=_read("faq"),
     )

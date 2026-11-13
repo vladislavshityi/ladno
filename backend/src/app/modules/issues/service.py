@@ -13,7 +13,7 @@ from app.modules.houses import service as houses
 from app.modules.houses.models import House, ManagementCompany
 from app.modules.issues import drafts, photos, routing
 from app.modules.issues.deadlines import add_deadline, is_overdue
-from app.modules.issues.models import Issue, IssueStatus
+from app.modules.issues.models import ANSWERED_STATUSES, Issue, IssueStatus
 from app.modules.issues.schemas import (
     Draft,
     IssueCreate,
@@ -142,6 +142,7 @@ async def create_issue(
 
 def mark_submitted(issue: Issue, submitted_at: datetime | None) -> None:
     issue.status = IssueStatus.SUBMITTED
+    issue.answered_at = None
     issue.submitted_at = submitted_at or utcnow()
     deadline = RouteResult.model_validate(issue.route).response_deadline
     issue.deadline_at = (
@@ -161,6 +162,10 @@ async def patch_issue(
         mark_submitted(issue, patch.submitted_at)
     elif patch.status is not None:
         issue.status = patch.status
+        if patch.status not in ANSWERED_STATUSES:
+            issue.answered_at = None
+        elif issue.answered_at is None:
+            issue.answered_at = utcnow()
     await session.commit()
     return issue
 

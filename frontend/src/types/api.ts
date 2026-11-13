@@ -211,7 +211,7 @@ export interface paths {
         };
         /**
          * List Companies
-         * @description Управляющие компании для выбора в профиле; q — часть названия.
+         * @description Управляющие компании для выбора в профиле; q — часть названия, inn — точный ИНН.
          */
         get: operations["list_companies"];
         put?: never;
@@ -518,6 +518,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/receipts/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Services
+         * @description Услуги для ручного ввода; на период (YYYY-MM) подставляется тариф региона, если он есть.
+         */
+        get: operations["list_services"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/receipts/manual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Manual Receipt
+         * @description Квитанция, введённая вручную; проверка и заявление на перерасчёт работают как обычно.
+         */
+        post: operations["create_manual_receipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/receipts": {
         parameters: {
             query?: never;
@@ -752,6 +792,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ratings/companies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Company Ratings
+         * @description Рейтинг УК по обращениям жителей. Только агрегаты, вход не нужен.
+         */
+        get: operations["list_company_ratings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ratings/companies/{company_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Company Rating
+         * @description Метрики УК, разбивка по категориям и месяцам, дома с активными обращениями.
+         */
+        get: operations["get_company_rating"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/map/points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Map Points
+         * @description Дома с обращениями за период: число, категории, УК с баллом. Вход не нужен.
+         */
+        get: operations["list_map_points"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Meta
+         * @description Возможности сервера: фронтенд скрывает то, что без модели не работает.
+         */
+        get: operations["get_meta"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/faq": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Faq
+         * @description Частые вопросы с нормами из справочника региона; работают без модели.
+         */
+        get: operations["list_faq"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -857,6 +997,15 @@ export interface components {
              * @default false
              */
             is_overdue: boolean;
+        };
+        /** BreakdownItem */
+        BreakdownItem: {
+            /** Key */
+            key: string;
+            /** Issues Total */
+            issues_total: number;
+            /** Resolved */
+            resolved: number;
         };
         /** Category */
         Category: {
@@ -985,6 +1134,66 @@ export interface components {
              * @default []
              */
             photo_ids: string[];
+        };
+        /** CompanyDetail */
+        CompanyDetail: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Score */
+            score: number | null;
+            /** Issues Total */
+            issues_total: number;
+            /** Resolved Share */
+            resolved_share: number | null;
+            /** On Time Share */
+            on_time_share: number | null;
+            /** Escalated Share */
+            escalated_share: number;
+            /** Overdue Now */
+            overdue_now: number;
+            /** Houses Count */
+            houses_count: number;
+            /** Districts */
+            districts: string[];
+            /** Top Categories */
+            top_categories: string[];
+            /** Phones */
+            phones: string[];
+            /** Site */
+            site: string | null;
+            /** By Category */
+            by_category: components["schemas"]["BreakdownItem"][];
+            /** By Month */
+            by_month: components["schemas"]["BreakdownItem"][];
+            /** Houses */
+            houses: components["schemas"]["HouseLoad"][];
+        };
+        /** CompanyRating */
+        CompanyRating: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Score */
+            score: number | null;
+            /** Issues Total */
+            issues_total: number;
+            /** Resolved Share */
+            resolved_share: number | null;
+            /** On Time Share */
+            on_time_share: number | null;
+            /** Escalated Share */
+            escalated_share: number;
+            /** Overdue Now */
+            overdue_now: number;
+            /** Houses Count */
+            houses_count: number;
+            /** Districts */
+            districts: string[];
+            /** Top Categories */
+            top_categories: string[];
         };
         /** Compare */
         Compare: {
@@ -1152,6 +1361,20 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** FaqItem */
+        FaqItem: {
+            /** Id */
+            id: string;
+            /** Question */
+            question: string;
+            /** Answer */
+            answer: string;
+            /**
+             * Basis
+             * @default []
+             */
+            basis: components["schemas"]["Basis"][];
+        };
         /** Finding */
         Finding: {
             /**
@@ -1175,6 +1398,17 @@ export interface components {
              * @enum {string}
              */
             confidence: "high" | "medium" | "low";
+        };
+        /** HouseLoad */
+        HouseLoad: {
+            /** House Id */
+            house_id: number;
+            /** Address */
+            address: string;
+            /** Issues Total */
+            issues_total: number;
+            /** Active */
+            active: number;
         };
         /** HouseRead */
         HouseRead: {
@@ -1346,6 +1580,131 @@ export interface components {
              * @description Откуда известна связка дома с УК; пусто, если УК выбрана жителем
              */
             source: ("gis_zhkh" | "vl_ru") | null;
+        };
+        /** ManualCompany */
+        ManualCompany: {
+            /** Name */
+            name?: string | null;
+            /** Inn */
+            inn?: string | null;
+        };
+        /**
+         * ManualReceipt
+         * @description Квитанция, введённая жителем вручную. Полный лицевой счёт и ФИО не принимаются.
+         */
+        ManualReceipt: {
+            /**
+             * Period
+             * @description YYYY-MM
+             */
+            period: string;
+            management_company?: components["schemas"]["ManualCompany"] | null;
+            /**
+             * Account Last4
+             * @description Последние 4 цифры
+             */
+            account_last4?: string | null;
+            /** Area M2 */
+            area_m2?: number | string | null;
+            /** Residents */
+            residents?: number | null;
+            /** Lines */
+            lines: components["schemas"]["ParsedLine"][];
+            /**
+             * Total
+             * @description Итог к оплате; пусто — сумма строк
+             */
+            total?: number | string | null;
+        };
+        /** MapCompany */
+        MapCompany: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Score */
+            score: number | null;
+        };
+        /** MapPoint */
+        MapPoint: {
+            /** House Id */
+            house_id: number;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Address */
+            address: string;
+            /** Total */
+            total: number;
+            /** Active */
+            active: number;
+            /** Emergency */
+            emergency: boolean;
+            /** Categories */
+            categories: {
+                [key: string]: number;
+            };
+            management_company: components["schemas"]["MapCompany"] | null;
+        };
+        /** Meta */
+        Meta: {
+            /**
+             * Llm
+             * @description Подключена языковая модель: доступен ассистент
+             */
+            llm: boolean;
+            /**
+             * Vision
+             * @description Модель понимает изображения: разбор фото квитанций
+             */
+            vision: boolean;
+            /** Region */
+            region: string;
+            /**
+             * Demo Data
+             * @description Данные демонстрационные
+             */
+            demo_data: boolean;
+            /**
+             * Llm Fallbacks
+             * @description Сколько раз по месту вызова модель не помогла и взят запасной путь
+             */
+            llm_fallbacks: {
+                [key: string]: number;
+            };
+        };
+        /** ParsedLine */
+        ParsedLine: {
+            /**
+             * Service Code
+             * @default other
+             * @enum {string}
+             */
+            service_code: "maintenance" | "cold_water" | "hot_water" | "hot_water_heat" | "sewerage" | "heating" | "electricity" | "gas" | "waste" | "capital_repair" | "common_property_resources" | "intercom" | "other";
+            /** Service Name */
+            service_name: string;
+            /** Unit */
+            unit?: string | null;
+            /** Volume */
+            volume?: number | string | null;
+            /** Tariff */
+            tariff?: number | string | null;
+            /** Accrued */
+            accrued: number | string;
+            /**
+             * Recalculation
+             * @default 0
+             */
+            recalculation: number | string;
+            /** Total */
+            total?: number | string | null;
+            /**
+             * Method
+             * @default unknown
+             * @enum {string}
+             */
+            method: "meter" | "norm" | "norm_increased" | "unknown";
         };
         /** PhotoRead */
         PhotoRead: {
@@ -1630,6 +1989,23 @@ export interface components {
             external_ref: string | null;
             /** Message */
             message: string;
+        };
+        /** ServiceOption */
+        ServiceOption: {
+            /**
+             * Service Code
+             * @enum {string}
+             */
+            service_code: "maintenance" | "cold_water" | "hot_water" | "hot_water_heat" | "sewerage" | "heating" | "electricity" | "gas" | "waste" | "capital_repair" | "common_property_resources" | "intercom" | "other";
+            /** Name */
+            name: string;
+            /** Unit */
+            unit: string | null;
+            /**
+             * Tariff
+             * @description Тариф региона на период в единицах строки; пусто, если неоднозначен
+             */
+            tariff: string | null;
         };
         /** Submission */
         Submission: {
@@ -2325,6 +2701,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string | null;
+                inn?: string | null;
             };
             header?: never;
             path?: never;
@@ -3209,6 +3586,106 @@ export interface operations {
             };
         };
     };
+    list_services: {
+        parameters: {
+            query?: {
+                period?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceOption"][];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_manual_receipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualReceipt"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Receipt"];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     list_receipts: {
         parameters: {
             query?: never;
@@ -3827,6 +4304,250 @@ export interface operations {
                 content?: never;
             };
             /** @description Неверный служебный токен бота */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_company_ratings: {
+        parameters: {
+            query?: {
+                district?: string | null;
+                sort?: "score" | "issues" | "overdue";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyRating"][];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_company_rating: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyDetail"];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_map_points: {
+        parameters: {
+            query?: {
+                category?: string | null;
+                days?: number;
+                active?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapPoint"][];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_meta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meta"];
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Некорректный запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_faq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FaqItem"][];
+                };
+            };
+            /** @description Нужен вход */
             401: {
                 headers: {
                     [name: string]: unknown;

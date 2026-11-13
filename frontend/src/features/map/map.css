@@ -1,0 +1,53 @@
+/* In the base layer, so Tailwind utilities (link colours, margins) win over Leaflet defaults. */
+@import 'leaflet/dist/leaflet.css' layer(base);
+
+/* Map colours come from the app theme tokens, so the map follows light and dark mode. */
+.leaflet-container {
+  background: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.map-tiles {
+  filter: grayscale(1) contrast(0.9) brightness(1.05);
+}
+.dark .map-tiles {
+  filter: invert(1) hue-rotate(180deg) grayscale(1) brightness(0.8);
+}
+
+.map-dot {
+  fill: var(--primary);
+  stroke: var(--background);
+  cursor: pointer;
+}
+.map-dot-emergency {
+  fill: var(--destructive);
+}
+
+.map-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 2px solid var(--background);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+}
+
+.map-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: var(--radius-2xl);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 0 0 1px var(--border), 0 8px 24px rgb(0 0 0 / 18%);
+}
+.map-popup .leaflet-popup-content {
+  margin: 0;
+  line-height: 1.4;
+}
+.map-popup .leaflet-popup-tip-container {
+  display: none;
+}

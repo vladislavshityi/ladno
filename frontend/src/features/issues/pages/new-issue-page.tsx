@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/page-header'
 import { useMe } from '@/features/auth/hooks'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useHouse } from '@/features/houses/hooks'
 import { AddressStep } from '../components/steps/address-step'
 import { CategoryStep } from '../components/steps/category-step'
 import { DescribeStep } from '../components/steps/describe-step'
@@ -9,15 +11,18 @@ import { QuestionsStep } from '../components/steps/questions-step'
 import { RouteStep } from '../components/steps/route-step'
 import { WizardStepper } from '../components/wizard-stepper'
 import { useCreateIssue } from '../hooks'
+import type { House } from '@/types/models'
 import { EMPTY_WIZARD, WIZARD_STEPS, formatLocation, type StepId, type WizardData } from '../wizard'
 
-export default function NewIssuePage() {
+function NewIssueWizard({ presetHouse, presetCategory }: { presetHouse: House | undefined; presetCategory: string | null }) {
   const { data: me } = useMe()
   const navigate = useNavigate()
   const create = useCreateIssue()
   const [step, setStep] = useState<StepId>('describe')
   const [data, setData] = useState<WizardData>(() => ({
     ...EMPTY_WIZARD,
+    presetCategory,
+    house: presetHouse ? { house_id: presetHouse.id, address: presetHouse.address, lat: presetHouse.lat, lon: presetHouse.lon } : null,
     location: { ...EMPTY_WIZARD.location, entrance: me?.entrance ?? '', apartment: me?.apartment ?? '' },
   }))
 
@@ -55,4 +60,13 @@ export default function NewIssuePage() {
       </div>
     </div>
   )
+}
+
+/** The map links here with ?house_id=&category= to start an issue about the same problem. */
+export default function NewIssuePage() {
+  const [params] = useSearchParams()
+  const houseId = Number(params.get('house_id')) || null
+  const { data: house, isPending } = useHouse(houseId)
+  if (houseId && isPending) return <Skeleton className="mx-auto h-96 max-w-2xl rounded-2xl" />
+  return <NewIssueWizard presetHouse={house} presetCategory={params.get('category')} />
 }

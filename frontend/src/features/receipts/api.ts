@@ -1,10 +1,12 @@
 import { api } from '@/lib/api-client'
-import type { Check, Compare, CompareExplanation, LinePatch, Receipt, ReceiptSample, ReceiptShort, RecalculationLetter } from '@/types/models'
+import type { Check, Compare, CompareExplanation, LinePatch, ManualReceipt, Receipt, ServiceOption, ReceiptSample, ReceiptShort, RecalculationLetter } from '@/types/models'
 
 export const receiptsApi = {
   list: () => api.get<ReceiptShort[]>('/receipts'),
   samples: () => api.get<ReceiptSample[]>('/receipts/samples'),
   upload: (file: File) => api.upload<Receipt>('/receipts', file),
+  services: (period: string) => api.get<ServiceOption[]>('/receipts/services', { period }),
+  createManual: (body: ManualReceipt) => api.post<Receipt>('/receipts/manual', body),
   loadSample: (id: string) => api.post<Receipt>(`/receipts/samples/${id}`),
   get: (id: string) => api.get<Receipt>(`/receipts/${id}`),
   patchLine: (id: string, lineId: number, body: LinePatch) => api.patch<Receipt>(`/receipts/${id}/lines/${lineId}`, body),

@@ -23,7 +23,9 @@ async def get_house(house_id: int, session: SessionDep) -> HouseRead:
 
 
 @router.get("/management-companies", response_model=list[ManagementCompanyRead])
-async def list_companies(session: SessionDep, q: str | None = None) -> list[ManagementCompanyRead]:
-    """Управляющие компании для выбора в профиле; q — часть названия."""
-    companies = await service.list_companies(session, q)
+async def list_companies(
+    session: SessionDep, q: str | None = None, inn: str | None = None
+) -> list[ManagementCompanyRead]:
+    """Управляющие компании для выбора в профиле; q — часть названия, inn — точный ИНН."""
+    companies = await service.list_companies(session, q, inn)
     return [ManagementCompanyRead.model_validate(c) for c in companies]

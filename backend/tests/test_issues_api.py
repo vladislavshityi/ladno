@@ -156,11 +156,20 @@ async def test_photo_validation(client: httpx.AsyncClient, anna: Account):
     assert response.status_code == 413
 
 
-async def test_classify_without_llm_needs_manual_choice(client: httpx.AsyncClient, anna: Account):
+async def test_classify_without_llm_uses_keywords(client: httpx.AsyncClient, anna: Account):
     body = (
         await client.post(
             "/issues/classify", json={"text": "в подъезде не горит свет"}, headers=anna.headers
         )
+    ).json()
+    assert body["category"] == "stairwell_lighting" and body["needs_manual_choice"] is False
+
+
+async def test_classify_without_llm_unclear_text_needs_manual_choice(
+    client: httpx.AsyncClient, anna: Account
+):
+    body = (
+        await client.post("/issues/classify", json={"text": "что-то не так"}, headers=anna.headers)
     ).json()
     assert body["needs_manual_choice"] is True and body["category"] is None
 

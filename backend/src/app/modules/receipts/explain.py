@@ -1,7 +1,6 @@
 """Объяснения строк и сравнения квитанций: текст модели проходит проверку чисел, иначе шаблон."""
 
 import json
-import logging
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
@@ -9,12 +8,11 @@ from app.core.errors import AppError
 from app.core.region import get_region
 from app.core.text import numbers_are_supported
 from app.llm.client import LLMClient
+from app.llm.fallbacks import record_fallback
 from app.llm.structured import ask_json
 from app.modules.receipts import texts
 from app.modules.receipts.schemas import Compare, ReceiptLine
 from app.modules.receipts.tariffs import service_note
-
-log = logging.getLogger(__name__)
 
 _LINES_PROMPT = (
     "Для каждой строки квитанции напиши одну короткую фразу простым языком: что это за услуга и "
@@ -47,7 +45,7 @@ async def _llm_line_texts(llm: LLMClient, lines: list[ReceiptLine]) -> dict[int,
     try:
         return {x.line_id: x.explanation for x in await ask_json(llm, messages, _LINE_TEXTS)}
     except (AppError, ValidationError, ValueError):
-        log.warning("Модель не объяснила строки квитанции, берём шаблоны")
+        record_fallback("receipt_explain")
         return {}
 
 
@@ -61,6 +59,8 @@ async def explain_lines(llm: LLMClient | None, lines: list[ReceiptLine]) -> dict
         candidate = from_llm.get(line.id)
         source = line.model_dump_json() + fallback
         supported = candidate and numbers_are_supported(candidate, source)
+        if from_llm and not supported:
+            record_fallback("receipt_explain", "текст модели не прошёл проверки")
         result[line.id] = candidate if supported else fallback
     return result
 
@@ -74,6 +74,9 @@ async def explain_compare(llm: LLMClient | None, diff: Compare) -> str:
     try:
         text = (await llm.complete(messages)).strip()
     except AppError:
-        log.warning("Модель не объяснила сравнение, берём шаблон")
+        record_fallback("compare")
         return fallback
-    return text if text and numbers_are_supported(text, source) else fallback
+    if text and numbers_are_supported(text, source):
+        return text
+    record_fallback("compare", "текст модели не прошёл проверки")
+    return fallback

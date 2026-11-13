@@ -37,6 +37,16 @@ export type CompareLine = S['CompareLine']
 export type Check = S['Check']
 export type Finding = S['Finding']
 export type RecalculationLetter = S['RecalculationLetter']
+export type ManualReceipt = S['ManualReceipt']
+export type ManualLine = S['ParsedLine']
+export type ServiceOption = S['ServiceOption']
+
+export type Meta = S['Meta']
+export type CompanyRating = S['CompanyRating']
+export type CompanyDetail = S['CompanyDetail']
+export type MapPoint = S['MapPoint']
+
+export type FaqItem = S['FaqItem']
 
 export type ChatMessage = S['ChatMessage']
 export type ApiErrorBody = S['ErrorResponse']

@@ -4,7 +4,8 @@ from fastapi import APIRouter, UploadFile
 
 from app.core.deps import ConsentedUser, CurrentUser, LLMDep, SessionDep
 from app.core.rate_limit import LLMRateLimit
-from app.modules.receipts import analysis, letter, samples, service
+from app.core.region import get_region
+from app.modules.receipts import analysis, letter, samples, service, tariffs
 from app.modules.receipts import schemas as s
 
 router = APIRouter(prefix="/receipts", tags=["receipts"])
@@ -14,6 +15,21 @@ router = APIRouter(prefix="/receipts", tags=["receipts"])
 async def list_samples() -> list[s.ReceiptSample]:
     """Демо-квитанции для знакомства с сервисом; без входа."""
     return samples.list_samples()
+
+
+@router.get("/services", response_model=list[s.ServiceOption])
+async def list_services(period: str = "") -> list[s.ServiceOption]:
+    """Услуги для ручного ввода; на период (YYYY-MM) подставляется тариф региона, если он есть."""
+    options = tariffs.service_options(get_region().tariffs, period)
+    return [s.ServiceOption.model_validate(x) for x in options]
+
+
+@router.post("/manual", response_model=s.Receipt, status_code=201, dependencies=[LLMRateLimit])
+async def create_manual_receipt(
+    data: s.ManualReceipt, user: ConsentedUser, session: SessionDep, llm: LLMDep
+) -> s.Receipt:
+    """Квитанция, введённая вручную; проверка и заявление на перерасчёт работают как обычно."""
+    return service.to_schema(await service.create_manual(session, user.id, llm, data))
 
 
 @router.post("", response_model=s.Receipt, status_code=201, dependencies=[LLMRateLimit])

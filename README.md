@@ -54,6 +54,8 @@ docker compose up -d --build  # сайт http://localhost:8080, Swagger http://l
 
 Вход без Telegram для разработки: `APP_ENV=dev` и `POST /api/auth/dev {"telegram_id": 1}`.
 
+Демо для рейтинга УК и карты: `docker compose exec backend python -m app.seed_demo` (синтетические обращения; `--clear` удаляет, `DEMO_DATA=true` подписывает их в интерфейсе).
+
 <details>
 <summary>Разработка и тесты</summary>
 
