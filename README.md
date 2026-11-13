@@ -9,13 +9,14 @@
 
 Адресатов, нормы, сроки и суммы определяет код по данным региона. Языковая модель только классифицирует, пересказывает и объясняет, а числа в её текстах сверяются с расчётами. Без модели всё работает на шаблонах, кроме разбора фото квитанции и ассистента.
 
-В этом репозитории пока только backend. Frontend и Telegram-бот добавятся рядом: `docker-compose.yml` и CI рассчитаны на новые сервисы и задачи.
+Backend и frontend лежат в этом репозитории; Telegram-бот добавится рядом: `docker-compose.yml` и CI рассчитаны на новые сервисы.
 
 ## Архитектура
 
 Модульный монолит на FastAPI, SQLAlchemy 2 (asyncpg) и PostgreSQL, миграции Alembic.
 
 ```
+frontend/                     React-приложение, Dockerfile (сборка и nginx), nginx.conf
 backend/
   data/regions/vladivostok/   справочники региона: YAML, дома и УК в CSV
   data/samples/receipts/      демо-квитанции
@@ -46,8 +47,9 @@ backend/
 ```bash
 cp .env.example .env        # задайте POSTGRES_PASSWORD и JWT_SECRET
 docker compose up -d --build
-curl http://localhost:8000/api/health
 ```
+
+Сайт открывается на http://localhost:8080 (порт задаёт `FRONTEND_PORT`). nginx во frontend отдаёт SPA и проксирует `/api/` в backend, поэтому браузер работает с одним origin и CORS не нужен. Проверка: `curl http://localhost:8080/api/health`.
 
 Контейнер backend перед стартом применяет миграции и загружает справочники (`alembic upgrade head`, `python -m app.seed`), обе команды можно запускать повторно. Порт backend открыт только на `127.0.0.1:${BACKEND_PORT}` и нужен для разработки: в проде к нему будет ходить frontend. Фото обращений лежат в томе `uploads`.
 
@@ -151,3 +153,40 @@ uv run pytest
 | Контакты УК | vl.ru | публичные карточки организаций |
 
 Демо-квитанции в `backend/data/samples/receipts` собраны вручную по реальным тарифам и не содержат персональных данных.
+
+
+## Фронтенд
+
+React 19, Vite, TypeScript, Tailwind CSS v4, shadcn/ui, TanStack Query, React Router. Типы API генерируются из OpenAPI. Тема светлая и тёмная; внутри Telegram Mini App берётся тема Telegram, а навигация становится нижней панелью.
+
+```
+frontend/src/
+  components/     общие компоненты: сайдбар, шапка, логотип, диалоги; ui/ — shadcn
+  features/       auth, landing, profile, houses, issues, receipts, assistant, legal
+    <feature>/    api.ts (запросы), hooks.ts (TanStack Query), components/, pages/
+  lib/            api-client, query-client, query-keys, auth-token, telegram, dates, money, design
+  types/          api.ts (сгенерирован), models.ts (короткие имена схем)
+  routes.tsx      маршруты и защита по входу и согласию
+```
+
+Разработка с прокси на backend (`docker compose up -d backend db`):
+
+```bash
+cd frontend
+npm ci
+npm run dev          # http://localhost:5173, /api проксируется на localhost:8000 (BACKEND_URL меняет адрес)
+npm run lint && npm run typecheck && npm test && npm run build
+npm run gen:api      # обновить src/types/api.ts из http://127.0.0.1:8000/openapi.json
+```
+
+Сгенерированный `src/types/api.ts` коммитится; после изменения схем backend запустите `gen:api`.
+
+Юридические тексты лежат в `frontend/src/features/legal/`. Перед запуском замените поля `[Наименование/ФИО оператора]`, `[e-mail для обращений]` и `[уточнить место размещения сервера]`. Версия согласия `CONSENT_VERSION` во `versions.ts` должна совпадать с `CONSENT_VERSION` backend.
+
+## Вход через Telegram
+
+1. Создайте бота в @BotFather командой `/newbot` и получите токен.
+2. Задайте в `.env` `TELEGRAM_BOT_TOKEN` и `TELEGRAM_BOT_USERNAME` (имя без `@`).
+3. Для кнопки входа на сайте привяжите домен: в @BotFather `/setdomain`, выберите бота и укажите домен сайта. Telegram Login Widget не работает на `localhost`, поэтому локально используйте вход для разработки (`APP_ENV=dev`).
+4. Для Mini App в @BotFather настройте кнопку меню или Web App с адресом сайта: приложение само определит `Telegram.WebApp.initData` и войдёт через `/api/auth/telegram/webapp`.
+5. Перезапустите backend: `docker compose up -d backend`.
