@@ -35,7 +35,8 @@ export default function MapPage() {
       <div className="grid gap-4 md:grid-cols-[1fr_16rem]">
         <div
           className={cn(
-            'relative min-h-80 overflow-hidden rounded-2xl border border-border',
+            // isolate keeps Leaflet's high z-indexes inside the map, under sheets and dialogs.
+            'relative isolate min-h-80 overflow-hidden rounded-2xl border border-border',
             // The Mini App has no browser chrome, so the map can take more of the viewport.
             isTelegramWebApp() ? 'h-[calc(100svh-19rem)] md:h-[calc(100svh-14rem)]' : 'h-[calc(100svh-21rem)] md:h-[calc(100svh-14rem)]',
           )}
