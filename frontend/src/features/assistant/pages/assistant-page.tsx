@@ -17,7 +17,9 @@ export default function AssistantPage() {
   const { selection, setSelection, issues, receipts, ready } = useContextSelection()
   const { messages, streaming, error, send } = useChat(selection)
   const end = useRef<HTMLDivElement>(null)
-  useEffect(() => end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), [messages])
+  useEffect(() => {
+    end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [messages])
 
   return (
     <div className="mx-auto grid max-w-2xl gap-5">

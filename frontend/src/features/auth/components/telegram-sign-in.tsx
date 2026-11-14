@@ -7,7 +7,9 @@ import { useWebAppLogin } from '../hooks'
 /** Automatic sign-in inside a Telegram Mini App. */
 export function TelegramSignIn() {
   const { mutate, isError, isPending } = useWebAppLogin()
-  useEffect(() => mutate(undefined, { onError: () => undefined }), [mutate])
+  useEffect(() => {
+    mutate(undefined, { onError: () => undefined })
+  }, [mutate])
 
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-4 px-4 text-center">
