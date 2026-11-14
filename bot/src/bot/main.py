@@ -2,6 +2,8 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher, F
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.telegram import TelegramAPIServer
 from aiogram.types import MenuButtonWebApp, WebAppInfo
 
 from bot.api import BackendClient
@@ -19,6 +21,14 @@ async def set_menu_button(bot: Bot, settings: Settings) -> None:
         await bot.set_chat_menu_button(menu_button=button)
 
 
+def make_bot(settings: Settings) -> Bot:
+    """Бот с прокси или своим адресом Bot API, если они заданы."""
+    session = AiohttpSession(proxy=settings.telegram_proxy or None)
+    if settings.telegram_api_url:
+        session.api = TelegramAPIServer.from_base(settings.telegram_api_url)
+    return Bot(settings.telegram_bot_token, session=session)
+
+
 async def main() -> None:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -27,7 +37,7 @@ async def main() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     settings = get_settings()
-    bot = Bot(settings.telegram_bot_token)
+    bot = make_bot(settings)
     api = BackendClient(settings.backend_url, settings.bot_api_token)
     dp = Dispatcher(settings=settings, api=api)
     dp.message.filter(F.chat.type == "private")

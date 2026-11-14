@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     # Адрес сайта: Mini App открывается по нему. Кнопки web_app Telegram принимает только с https.
     public_url: str = ""
     reminder_interval_minutes: int = 30
+    # Если сервер не достаёт до api.telegram.org: прокси (socks5://… или http://…)
+    # или свой адрес Bot API (например, зеркало). Пусто — прямое подключение.
+    telegram_proxy: str = ""
+    telegram_api_url: str = ""
 
     @property
     def app_is_https(self) -> bool:

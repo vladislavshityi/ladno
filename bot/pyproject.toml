@@ -5,6 +5,7 @@ description = "Ладно: Telegram-бот, открывающий Mini App и �
 requires-python = ">=3.12"
 dependencies = [
     "aiogram>=3.17.0",
+    "aiohttp-socks>=0.12.0",
     "httpx>=0.28.1",
     "pydantic-settings>=2.7.0",
 ]
