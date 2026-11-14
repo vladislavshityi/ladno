@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.quota import consume, grant_llm
 from app.core.region import get_region
 from app.llm.client import LLMClient
 from app.modules.issues.schemas import RecalculationHint
@@ -73,6 +74,9 @@ async def compare_explanation(
         target.updated_at,
     ):
         return CompareExplanation(text=cached.text)
+    if llm is not None:
+        await consume(session, user_id, "receipt_text")
+        llm = await grant_llm(session, llm)
     text = await explain.explain_compare(llm, _compare(base, target))
     await session.merge(
         CompareExplanationRow(

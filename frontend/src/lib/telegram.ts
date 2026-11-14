@@ -29,6 +29,8 @@ export const telegramColorScheme = () => (isTelegramWebApp() ? webApp()?.colorSc
 
 /** External links go through the Telegram viewer in a Mini App and a new tab elsewhere. */
 export function openExternal(url: string) {
+  // Ссылки из справочников и внешних источников: javascript: и подобное не открываем.
+  if (!/^https?:\/\//i.test(url)) return
   if (isTelegramWebApp()) webApp()?.openLink(url)
   else window.open(url, '_blank', 'noopener,noreferrer')
 }

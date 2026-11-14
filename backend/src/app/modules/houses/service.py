@@ -93,6 +93,12 @@ def _blank_to_none(value: str | None) -> str | None:
     return (value or "").strip() or None
 
 
+def _web_address(value: str | None) -> str | None:
+    """Сайт УК открывается из приложения по ссылке: только http и https, а не javascript: и т. п."""
+    address = _blank_to_none(value)
+    return address if address and address.lower().startswith(("http://", "https://")) else None
+
+
 def _company_row(row: dict[str, str]) -> dict:
     phones = [p.strip() for p in (row["phones"] or "").split(";") if p.strip()]
     return {
@@ -102,7 +108,7 @@ def _company_row(row: dict[str, str]) -> dict:
         "phones": phones,
         "email": _blank_to_none(row["email"]),
         "emergency_phone": _blank_to_none(row["emergency_phone"]),
-        "site": _blank_to_none(row["site"]),
+        "site": _web_address(row["site"]),
     }
 
 

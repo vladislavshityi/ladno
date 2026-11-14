@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import files
-from app.core.deps import ConsentedUser, CurrentUser, SessionDep
+from app.core.deps import ConsentedUser, CurrentUser, SessionDep, quota
 from app.core.errors import NotFound, PayloadTooLarge, UnsupportedMedia
 from app.modules.issues.models import Photo
 from app.modules.issues.schemas import PhotoRead
@@ -54,7 +54,7 @@ async def delete_files_of(session: AsyncSession, user_id: uuid.UUID) -> None:
     await files.remove_files(list(paths))
 
 
-@router.post("", response_model=PhotoRead, status_code=201)
+@router.post("", response_model=PhotoRead, status_code=201, dependencies=[quota("photo")])
 async def upload_photo(file: UploadFile, user: ConsentedUser, session: SessionDep) -> PhotoRead:
     """Загрузка фото (JPEG, PNG, WebP до 5 МБ). Файл видит только владелец."""
     photo = await save_photo(session, user.id, await file.read(MAX_BYTES + 1))
@@ -66,4 +66,10 @@ async def download_photo(
     photo_id: uuid.UUID, user: CurrentUser, session: SessionDep
 ) -> FileResponse:
     photo = await get_owned_photo(session, user.id, photo_id)
-    return FileResponse(photo.path, media_type=photo.content_type)
+    # sandbox и nosniff: даже подменённый файл браузер не станет исполнять как страницу.
+    headers = {
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "private, max-age=3600",
+    }
+    return FileResponse(photo.path, media_type=photo.content_type, headers=headers)

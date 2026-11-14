@@ -14,6 +14,9 @@ from app.modules.receipts import texts
 from app.modules.receipts.schemas import Compare, ReceiptLine
 from app.modules.receipts.tariffs import service_note
 
+LINES_MAX_TOKENS = 900
+DIFF_MAX_TOKENS = 400
+
 _LINES_PROMPT = (
     "Для каждой строки квитанции напиши одну короткую фразу простым языком: что это за услуга и "
     "от чего зависит сумма. Используй только числа из входных данных, ничего не пересчитывай. "
@@ -43,7 +46,10 @@ async def _llm_line_texts(llm: LLMClient, lines: list[ReceiptLine]) -> dict[int,
         {"role": "user", "content": payload},
     ]
     try:
-        return {x.line_id: x.explanation for x in await ask_json(llm, messages, _LINE_TEXTS)}
+        return {
+            x.line_id: x.explanation
+            for x in await ask_json(llm, messages, _LINE_TEXTS, max_tokens=LINES_MAX_TOKENS)
+        }
     except (AppError, ValidationError, ValueError):
         record_fallback("receipt_explain")
         return {}
@@ -72,7 +78,7 @@ async def explain_compare(llm: LLMClient | None, diff: Compare) -> str:
     source = diff.model_dump_json()
     messages = [{"role": "system", "content": _DIFF_PROMPT}, {"role": "user", "content": source}]
     try:
-        text = (await llm.complete(messages)).strip()
+        text = (await llm.complete(messages, max_tokens=DIFF_MAX_TOKENS)).strip()
     except AppError:
         record_fallback("compare")
         return fallback

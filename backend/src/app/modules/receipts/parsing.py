@@ -16,6 +16,7 @@ from app.llm.client import LLMClient, Message, vision_model
 from app.llm.structured import strip_fence
 from app.modules.receipts.schemas import ParsedLine, ParsedReceipt
 
+PARSE_MAX_TOKENS = 4000  # таблица на 15–20 строк в JSON с транскрипцией
 MAX_SIDE = 2048  # крупнее модель всё равно уменьшит, а мелкий шрифт таблицы страдает
 SUM_TOLERANCE_PCT = Decimal("0.005")
 SUM_TOLERANCE_MIN = Decimal("1")
@@ -150,7 +151,7 @@ async def detect_rotation(llm: LLMClient, image: bytes, content_type: str) -> in
             ],
         }
     ]
-    answer = await llm.complete(messages, model=vision_model())
+    answer = await llm.complete(messages, model=vision_model(), max_tokens=5)
     match = re.fullmatch(r"\s*(0|90|180|270)\s*°?\s*\.?\s*", answer)
     return int(match.group(1)) if match else 0
 
@@ -232,7 +233,9 @@ def _better(first: Attempt | None, second: Attempt | None) -> Attempt:
 
 async def _ask(llm: LLMClient, messages: list[Message]) -> tuple[Attempt | None, str, str]:
     """Ответ модели, его текст и ошибка разбора (пусто, если разобрался)."""
-    text = await llm.complete(messages, json_mode=True, model=vision_model())
+    text = await llm.complete(
+        messages, json_mode=True, model=vision_model(), max_tokens=PARSE_MAX_TOKENS
+    )
     try:
         return _parse_answer(text), text, ""
     except (ValueError, ValidationError, AttributeError) as exc:

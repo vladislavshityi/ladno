@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthorized
+from app.core.quota import consume
 from app.core.security import decode_access_token
 from app.llm.client import LLMClient, get_llm
 from app.modules.users.models import User
@@ -43,8 +44,17 @@ def require_bot(
     expected = get_settings().bot_api_token
     if not expected or credentials is None:
         raise Unauthorized("Нужен служебный токен бота", "invalid_bot_token")
-    if not hmac.compare_digest(credentials.credentials, expected):
+    if not hmac.compare_digest(credentials.credentials.encode(), expected.encode()):
         raise Unauthorized("Нужен служебный токен бота", "invalid_bot_token")
+
+
+def quota(kind: str):
+    """Зависимость маршрута: учитывает запрос пользователя по лимитам из core/quota.py."""
+
+    async def check(user: Annotated[User, Depends(get_current_user)], session: SessionDep) -> None:
+        await consume(session, user.id, kind)
+
+    return Depends(check)
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]

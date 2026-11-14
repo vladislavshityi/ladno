@@ -41,7 +41,7 @@ export function SimilarBanner({ count, choice, onChange }: Props) {
         <div className="flex items-start gap-2.5">
           <Checkbox id="consent-letter" checked={choice.consentLetter} onCheckedChange={(v) => onChange({ ...choice, consentLetter: v === true })} className="mt-0.5" />
           <Label htmlFor="consent-letter" className="text-sm leading-snug font-normal">
-            Указать мои ФИО и квартиру в коллективном письме
+            Указать мои ФИО, квартиру и мои фото в коллективном письме
           </Label>
         </div>
       )}

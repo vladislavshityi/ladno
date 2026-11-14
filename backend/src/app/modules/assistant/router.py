@@ -4,12 +4,15 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from app.core.deps import CurrentUser, LLMDep, SessionDep
+from app.core.deps import CurrentUser, LLMDep, SessionDep, quota
 from app.core.errors import AppError, ServiceUnavailable
+from app.core.quota import grant_llm
 from app.core.rate_limit import LLMRateLimit
 from app.llm.client import LLMClient
 from app.modules.assistant.context import build_system_prompt
 from app.modules.assistant.schemas import ChatRequest
+
+MAX_TOKENS = 700
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
 
@@ -21,7 +24,7 @@ def _event(payload: dict, name: str | None = None) -> str:
 
 async def _stream_events(llm: LLMClient, messages: list[dict]) -> AsyncIterator[str]:
     try:
-        async for delta in llm.stream(messages):
+        async for delta in llm.stream(messages, max_tokens=MAX_TOKENS):
             yield _event({"delta": delta})
     except AppError as exc:
         yield _event({"detail": exc.detail, "code": exc.code}, name="error")
@@ -31,7 +34,7 @@ async def _stream_events(llm: LLMClient, messages: list[dict]) -> AsyncIterator[
 @router.post(
     "/chat",
     response_class=StreamingResponse,
-    dependencies=[LLMRateLimit],
+    dependencies=[LLMRateLimit, quota("assistant")],
     responses={200: {"content": {"text/event-stream": {}}, "description": "Поток SSE"}},
 )
 async def chat(
@@ -41,6 +44,7 @@ async def chat(
 
     При сбое модели посреди ответа приходит событие `error`. История диалога не хранится.
     """
+    llm = await grant_llm(session, llm)
     if llm is None:
         raise ServiceUnavailable("Ассистент сейчас недоступен", "llm_unavailable")
     system = {

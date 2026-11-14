@@ -10,6 +10,9 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from app.core.config import get_settings
 from app.core.errors import UnsupportedMedia
 
+# Файл до 5 МБ может распаковаться в гигабайты («бомба»): картинки крупнее не разбираем.
+MAX_PIXELS = 50_000_000
+
 EXTENSIONS = {
     "image/jpeg": "jpg",
     "image/png": "png",
@@ -35,9 +38,11 @@ def strip_metadata(data: bytes, content_type: str) -> bytes:
     out = io.BytesIO()
     try:
         with Image.open(io.BytesIO(data)) as image:
+            if image.width * image.height > MAX_PIXELS:
+                raise UnsupportedMedia("Изображение слишком большое по размерам")
             clean = ImageOps.exif_transpose(image)
             clean.save(out, format=EXTENSIONS[content_type].replace("jpg", "jpeg"), quality=90)
-    except (UnidentifiedImageError, OSError) as error:
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as error:
         raise UnsupportedMedia("Не удалось прочитать изображение") from error
     return out.getvalue()
 

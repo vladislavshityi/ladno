@@ -31,4 +31,12 @@ describe('telegram', () => {
     openExternal('https://pos.gosuslugi.ru/')
     expect(window.open).toHaveBeenCalledWith('https://pos.gosuslugi.ru/', '_blank', 'noopener,noreferrer')
   })
+
+  it('refuses non-web links such as javascript:', () => {
+    const openLink = vi.fn()
+    withWebApp({ initData: 'x', openLink })
+    openExternal('javascript:alert(1)')
+    openExternal('data:text/html,<script>1</script>')
+    expect(openLink).not.toHaveBeenCalled()
+  })
 })

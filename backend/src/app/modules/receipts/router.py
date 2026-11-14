@@ -2,7 +2,8 @@ import uuid
 
 from fastapi import APIRouter, UploadFile
 
-from app.core.deps import ConsentedUser, CurrentUser, LLMDep, SessionDep
+from app.core.deps import ConsentedUser, CurrentUser, LLMDep, SessionDep, quota
+from app.core.quota import grant_llm, llm_if_budget_left
 from app.core.rate_limit import LLMRateLimit
 from app.core.region import get_region
 from app.modules.receipts import analysis, letter, samples, service, tariffs
@@ -24,11 +25,17 @@ async def list_services(period: str = "") -> list[s.ServiceOption]:
     return [s.ServiceOption.model_validate(x) for x in options]
 
 
-@router.post("/manual", response_model=s.Receipt, status_code=201, dependencies=[LLMRateLimit])
+@router.post(
+    "/manual",
+    response_model=s.Receipt,
+    status_code=201,
+    dependencies=[LLMRateLimit, quota("receipt_text")],
+)
 async def create_manual_receipt(
     data: s.ManualReceipt, user: ConsentedUser, session: SessionDep, llm: LLMDep
 ) -> s.Receipt:
     """Квитанция, введённая вручную; проверка и заявление на перерасчёт работают как обычно."""
+    llm = await grant_llm(session, llm)
     return service.to_schema(await service.create_manual(session, user.id, llm, data))
 
 
@@ -45,6 +52,7 @@ async def upload_receipt(
 async def load_sample(
     sample_id: str, user: ConsentedUser, session: SessionDep, llm: LLMDep
 ) -> s.Receipt:
+    llm = await llm_if_budget_left(session, llm)
     return service.to_schema(await service.load_sample(session, user.id, llm, sample_id))
 
 
@@ -77,7 +85,9 @@ async def get_receipt(receipt_id: uuid.UUID, user: CurrentUser, session: Session
     return service.to_schema(await service.get_owned(session, user.id, receipt_id))
 
 
-@router.patch("/{receipt_id}/lines/{line_id}", response_model=s.Receipt)
+@router.patch(
+    "/{receipt_id}/lines/{line_id}", response_model=s.Receipt, dependencies=[LLMRateLimit]
+)
 async def patch_line(
     receipt_id: uuid.UUID,
     line_id: int,
@@ -87,6 +97,7 @@ async def patch_line(
     llm: LLMDep,
 ) -> s.Receipt:
     """Исправление распознанных значений строки; итоги и предупреждения пересчитываются."""
+    llm = await llm_if_budget_left(session, llm)
     receipt = await service.patch_line(session, user.id, llm, receipt_id, line_id, data)
     return service.to_schema(receipt)
 

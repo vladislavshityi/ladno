@@ -1,4 +1,5 @@
 from app.core.db import Base
+from app.core.quota import LlmUsage
 from app.modules.bot.models import BotNotification
 from app.modules.collectives.models import CollectiveIssue, CollectiveMember
 from app.modules.houses.models import House, ManagementCompany
@@ -15,6 +16,7 @@ __all__ = [
     "CompareExplanation",
     "House",
     "Issue",
+    "LlmUsage",
     "ManagementCompany",
     "Photo",
     "Receipt",

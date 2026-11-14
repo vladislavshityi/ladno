@@ -13,7 +13,8 @@ from pydantic import AfterValidator
 
 _WORD = re.compile(r"[A-Za-zА-Яа-яЁё]+(?:[-'’][A-Za-zА-Яа-яЁё]+)*\.?")
 _APARTMENT = re.compile(r"\d{1,4}(?:[a-zа-яё]|/\d{1,3})?")
-_EMAIL = re.compile(r"[^@\s]{1,64}@[^@\s.]+(?:\.[^@\s.]+)*\.[^@\s.]{2,}")
+# Без запятых, точек с запятой, скобок и кавычек: иначе в Cc ушло бы сразу несколько адресов.
+_EMAIL = re.compile(r"[\w.+\-'%]{1,64}@[\w\-]+(?:\.[\w\-]+)*\.[^\W\d_]{2,}")
 _PHONE_CHARS = re.compile(r"\+?[\d\s()\-]+")
 _PERIOD = re.compile(r"(\d{4})-(0[1-9]|1[0-2])")
 

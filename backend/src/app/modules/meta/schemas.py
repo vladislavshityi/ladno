@@ -12,6 +12,12 @@ class Meta(ApiModel):
     llm_fallbacks: dict[str, int] = Field(
         description="Сколько раз по месту вызова модель не помогла и взят запасной путь"
     )
+    llm_budget_exhausted: bool = Field(
+        description="Суточный бюджет запросов к модели исчерпан: до 00:00 UTC работают шаблоны"
+    )
+    llm_tokens_today: int = Field(
+        description="Токенов израсходовано за сутки с запуска сервиса; только статистика"
+    )
 
 
 class FaqItem(ApiModel):

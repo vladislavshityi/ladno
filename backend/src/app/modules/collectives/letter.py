@@ -45,6 +45,11 @@ async def _members(
     return [(m, u) for m, u in (await session.execute(stmt)).all()]
 
 
+async def _consenting_users(session: AsyncSession, collective_id: uuid.UUID) -> set[uuid.UUID]:
+    """Участники, разрешившие показать свои данные в письме: только их фото прикладываются."""
+    return {m.user_id for m, _ in await _members(session, collective_id) if m.consent_letter}
+
+
 async def member_issues(session: AsyncSession, collective_id: uuid.UUID) -> list[Issue]:
     stmt = select(Issue).where(Issue.collective_id == collective_id).order_by(Issue.created_at)
     return list((await session.scalars(stmt)).all())
@@ -53,6 +58,7 @@ async def member_issues(session: AsyncSession, collective_id: uuid.UUID) -> list
 async def build_letter(session: AsyncSession, collective: CollectiveIssue) -> CollectiveLetter:
     members = await _members(session, collective.id)
     issues = await member_issues(session, collective.id)
+    consenting = await _consenting_users(session, collective.id)
     # Письмо строится по обращению инициатора; если его удалили, по самому раннему из оставшихся.
     base = next((i for i in issues if i.id == collective.initiator_issue_id), issues[0])
     route = RouteResult.model_validate(base.route)
@@ -74,15 +80,17 @@ async def build_letter(session: AsyncSession, collective: CollectiveIssue) -> Co
         basis=route.basis,
         fix_deadline=route.fix_deadline,
         response_deadline=route.response_deadline,
-        photos_count=sum(len(i.photo_ids) for i in issues),
+        photos_count=sum(len(i.photo_ids) for i in issues if i.user_id in consenting),
         date=date.today().strftime("%d.%m.%Y"),
     )
     return CollectiveLetter(text=text, members_count=len(members))
 
 
 async def render_pdf(session: AsyncSession, collective: CollectiveIssue, text: str) -> bytes:
-    """PDF письма с фото всех участников."""
+    """PDF письма с фото участников, которые согласились на раскрытие своих данных в письме."""
+    consenting = await _consenting_users(session, collective.id)
     attachments = []
     for issue in await member_issues(session, collective.id):
-        attachments += await letter_pdf.load_photos(session, issue)
+        if issue.user_id in consenting:
+            attachments += await letter_pdf.load_photos(session, issue)
     return await letter_pdf.render_pdf(text, attachments)

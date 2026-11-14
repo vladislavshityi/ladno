@@ -29,7 +29,8 @@ def _signature(secret: bytes, fields: Mapping[str, str]) -> str:
 
 
 def _check_signature(secret: bytes, fields: Mapping[str, str], received: str) -> None:
-    if not hmac.compare_digest(_signature(secret, fields), received):
+    # Сравнение байтов: строка с не-ASCII символами в compare_digest вызвала бы TypeError.
+    if not hmac.compare_digest(_signature(secret, fields).encode(), received.encode()):
         raise TelegramAuthError("Подпись Telegram неверна")
 
 

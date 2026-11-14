@@ -18,7 +18,12 @@ def create_access_token(user_id: uuid.UUID) -> str:
 def decode_access_token(token: str) -> uuid.UUID:
     settings = get_settings()
     try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret,
+            algorithms=[settings.jwt_algorithm],
+            options={"require": ["exp", "sub"]},
+        )
         return uuid.UUID(payload["sub"])
     except (jwt.PyJWTError, KeyError, ValueError) as exc:
         raise Unauthorized("Недействительный или просроченный токен", "invalid_token") from exc

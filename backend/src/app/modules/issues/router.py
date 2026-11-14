@@ -2,7 +2,8 @@ import uuid
 
 from fastapi import APIRouter, Response
 
-from app.core.deps import ConsentedUser, CurrentUser, LLMDep, SessionDep
+from app.core.deps import ConsentedUser, CurrentUser, LLMDep, SessionDep, quota
+from app.core.quota import consume, grant_llm
 from app.core.rate_limit import LLMRateLimit
 from app.core.region import get_region
 from app.modules.issues import classification, letter_pdf, photos, routing, service
@@ -42,8 +43,14 @@ async def classify(
 ) -> Classification:
     """Категория по описанию и фото. Без модели или при сомнении — needs_manual_choice."""
     owned = [await photos.get_owned_photo(session, user.id, p) for p in data.photo_ids]
+    text = data.text.strip()
+    if llm and not owned and (known := classification.cached(text)):
+        return known  # тот же текст уже разбирала модель: лимит не тратим
+    if llm:
+        await consume(session, user.id, "classify")
+        llm = await grant_llm(session, llm)
     images = [await photos.read_photo(p) for p in owned]
-    return await classification.classify(llm, data.text.strip(), images)
+    return await classification.classify(llm, text, images)
 
 
 @router.post("/issues/route", response_model=RouteResult)
@@ -56,10 +63,11 @@ async def get_route(data: RouteRequest, user: CurrentUser, session: SessionDep) 
     )
 
 
-@router.post("/issues", response_model=IssueRead, status_code=201)
+@router.post("/issues", response_model=IssueRead, status_code=201, dependencies=[quota("issue")])
 async def create_issue(
     data: IssueCreate, user: ConsentedUser, session: SessionDep, llm: LLMDep
 ) -> IssueRead:
+    llm = await grant_llm(session, llm)
     return service.to_read(await service.create_issue(session, user, llm, data))
 
 

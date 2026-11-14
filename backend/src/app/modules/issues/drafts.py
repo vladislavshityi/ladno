@@ -16,6 +16,7 @@ from app.modules.issues.rules import HOUSING_INSPECTION, MANAGING_COMPANY
 from app.modules.issues.schemas import Addressee, Draft, RouteResult
 
 SUMMARY_MAX_CHARS = 600
+SUMMARY_MAX_TOKENS = 400
 OTHER_CATEGORY = "other"
 _SUMMARY_PROMPT = (
     "Перескажи проблему жителя деловым языком от первого лица, 2–4 предложения. Главный источник — "
@@ -69,7 +70,7 @@ async def _llm_summary(
     )
     messages = [{"role": "system", "content": _SUMMARY_PROMPT}, {"role": "user", "content": facts}]
     try:
-        text = (await llm.complete(messages)).strip()
+        text = (await llm.complete(messages, max_tokens=SUMMARY_MAX_TOKENS)).strip()
     except AppError:
         record_fallback("summary")
         return None

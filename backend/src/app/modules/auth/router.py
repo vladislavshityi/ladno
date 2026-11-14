@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.core.deps import SessionDep
+from app.core.rate_limit import LoginRateLimit
 from app.modules.auth import service
 from app.modules.auth.schemas import (
     AuthConfig,
@@ -19,13 +20,13 @@ async def get_config() -> AuthConfig:
     return service.get_config()
 
 
-@router.post("/telegram/widget", response_model=TokenResponse)
+@router.post("/telegram/widget", response_model=TokenResponse, dependencies=[LoginRateLimit])
 async def login_widget(data: TelegramWidgetLogin, session: SessionDep) -> TokenResponse:
     """Вход через Telegram Login Widget на сайте."""
     return await service.login_widget(session, data)
 
 
-@router.post("/telegram/webapp", response_model=TokenResponse)
+@router.post("/telegram/webapp", response_model=TokenResponse, dependencies=[LoginRateLimit])
 async def login_webapp(data: TelegramWebAppLogin, session: SessionDep) -> TokenResponse:
     """Вход из Telegram Mini App по initData."""
     return await service.login_webapp(session, data)

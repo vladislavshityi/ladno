@@ -5,6 +5,7 @@ import httpx
 import pytest
 
 from app.core.config import get_settings
+from app.modules.issues import classification
 from tests.conftest import PNG, Account, FakeLLM
 from tests.test_rules import uk_rules_with_ladder
 
@@ -230,12 +231,14 @@ async def test_classify_distrusts_unknown_category_and_low_confidence(
     for reply in ('{"category": "made_up", "confidence": 0.99}',
                   '{"category": "pothole", "confidence": 0.2, "clarification": "Где яма?"}',
                   "not json at all"):  # fmt: skip
+        classification.reset_cache()  # тот же текст иначе берётся из кэша
         llm.replies = [reply]
         body = (
             await client.post("/issues/classify", json={"text": "плохо"}, headers=anna.headers)
         ).json()
         assert body["needs_manual_choice"] is True and body["category"] is None
     assert body["clarification"] is None
+    classification.reset_cache()
     llm.replies = ['{"category": null, "confidence": 0.1, "clarification": "Где именно яма?"}']
     body = (
         await client.post("/issues/classify", json={"text": "плохо"}, headers=anna.headers)

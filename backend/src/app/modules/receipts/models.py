@@ -29,6 +29,8 @@ class Receipt(Base):
     status: Mapped[str] = mapped_column(String(16))
     warnings: Mapped[list[str]] = mapped_column(JSONB, default=list)
     sample_id: Mapped[str | None] = mapped_column(String(40))
+    # SHA-256 загруженного файла: тот же файл повторно не отправляется в модель.
+    file_hash: Mapped[str | None] = mapped_column(String(64), index=True)
     created_at: Mapped[CreatedAt]
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, server_default=func.now()

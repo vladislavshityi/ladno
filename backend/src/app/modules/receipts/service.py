@@ -1,3 +1,4 @@
+import hashlib
 import re
 import uuid
 from decimal import Decimal
@@ -16,6 +17,7 @@ from app.core.errors import (
     ServiceUnavailable,
     UnsupportedMedia,
 )
+from app.core.quota import consume, grant_llm
 from app.llm.client import LLMClient
 from app.llm.fallbacks import record_fallback
 from app.modules.receipts import explain, samples, schemas
@@ -154,8 +156,10 @@ async def _store(
     llm: LLMClient | None,
     parsed: ParsedReceipt,
     sample_id: str | None = None,
+    file_hash: str | None = None,
 ) -> Receipt:
     receipt = _build(user_id, parsed, sample_id)
+    receipt.file_hash = file_hash
     session.add(receipt)
     await session.flush()  # у строк появятся id для объяснений
     await _explain(llm, receipt)
@@ -172,6 +176,15 @@ async def upload(
     content_type = files.detect_content_type(data)
     if content_type not in RECEIPT_TYPES:
         raise UnsupportedMedia("Нужен файл JPEG, PNG или PDF")
+    file_hash = hashlib.sha256(data).hexdigest()
+    existing = await session.scalar(
+        select(Receipt).where(Receipt.user_id == user_id, Receipt.file_hash == file_hash)
+    )
+    if existing:
+        return existing  # тот же файл уже разобран: модель и лимит не тратим
+    if llm is not None:
+        await consume(session, user_id, "receipt_scan")
+        llm = await grant_llm(session, llm)
     if llm is None:
         raise ServiceUnavailable(
             "Разбор квитанции по фото сейчас недоступен. Попробуйте демо-образцы.",
@@ -185,7 +198,7 @@ async def upload(
     except (ValidationError, ValueError) as exc:
         record_fallback("receipt_parse")
         raise BadGateway("Не удалось разобрать квитанцию", "receipt_parse_failed") from exc
-    return await _store(session, user_id, llm, parsed)
+    return await _store(session, user_id, llm, parsed, file_hash=file_hash)
 
 
 async def create_manual(

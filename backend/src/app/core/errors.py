@@ -53,6 +53,10 @@ class TooManyRequests(AppError):
     status_code = 429
     default_code = "rate_limited"
 
+    def __init__(self, detail: str, code: str | None = None, retry_after: int | None = None):
+        super().__init__(detail, code)
+        self.retry_after = retry_after
+
 
 class BadGateway(AppError):
     status_code = 502
@@ -161,6 +165,8 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:
         headers = {"WWW-Authenticate": "Bearer"} if isinstance(exc, Unauthorized) else None
+        if isinstance(exc, TooManyRequests) and exc.retry_after:
+            headers = {"Retry-After": str(exc.retry_after)}
         return _error_response(exc.status_code, exc.detail, exc.code, headers)
 
     @app.exception_handler(StarletteHTTPException)

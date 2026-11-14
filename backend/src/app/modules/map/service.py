@@ -5,6 +5,7 @@ from datetime import timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.db import utcnow
 from app.modules.houses.models import House
 from app.modules.issues.models import ACTIVE_STATUSES, Issue, IssueStatus
@@ -71,4 +72,6 @@ async def list_points(
         point.active += active
         point.emergency |= urgent > 0
         point.categories[issue_category] = total
-    return list(points.values())
+    # Дом с одним-двумя обращениями выдал бы автора (дом, категория, срок), поэтому такие скрыты.
+    threshold = get_settings().map_min_issues
+    return [p for p in points.values() if p.total >= threshold]

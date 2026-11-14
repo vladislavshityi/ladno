@@ -21,6 +21,7 @@ os.environ.update(
         "TELEGRAM_BOT_TOKEN": "123456:TEST-TOKEN",
         "TELEGRAM_BOT_USERNAME": "",
         "BOT_API_TOKEN": "test-bot-token",
+        "MAP_MIN_ISSUES": "1",
         "UPLOAD_DIR": tempfile.mkdtemp(prefix="ladno-test-uploads-"),
     }
 )
@@ -44,9 +45,11 @@ from app.core.config import get_settings
 from app.core.db import get_session
 from app.core.rate_limit import reset_rate_limits
 from app.llm.client import get_llm
+from app.llm.tokens import reset_tokens
 from app.main import create_app
 from app.modules.houses.models import House
 from app.modules.houses.service import seed_houses
+from app.modules.issues import classification
 from app.modules.ratings import service as ratings
 from app.modules.users.models import User
 
@@ -98,18 +101,27 @@ class FakeLLM:
         self.chunks: list[str] = []
         self.calls: list[list[dict]] = []
         self.models: list[str | None] = []
+        self.max_tokens: list[int | None] = []
         self.error: Exception | None = None
 
     async def complete(
-        self, messages: list[dict], *, json_mode: bool = False, model: str | None = None
+        self,
+        messages: list[dict],
+        *,
+        json_mode: bool = False,
+        model: str | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         self.calls.append(messages)
         self.models.append(model)
+        self.max_tokens.append(max_tokens)
         if self.error:
             raise self.error
         return self.replies.pop(0) if len(self.replies) > 1 else self.replies[0]
 
-    async def stream(self, messages: list[dict]) -> AsyncIterator[str]:
+    async def stream(
+        self, messages: list[dict], *, max_tokens: int | None = None
+    ) -> AsyncIterator[str]:
         self.calls.append(messages)
         for chunk in self.chunks:
             yield chunk
@@ -120,6 +132,8 @@ class FakeLLM:
 @pytest.fixture(autouse=True)
 def _fresh_rate_limits() -> None:
     reset_rate_limits()
+    classification.reset_cache()
+    reset_tokens()
 
 
 @pytest.fixture(autouse=True)

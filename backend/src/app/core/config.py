@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://localhost:8080"
 
     jwt_secret: str = DEV_JWT_SECRET
-    jwt_algorithm: str = "HS256"
+    jwt_algorithm: Literal["HS256"] = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7
     pii_encryption_key: str = DEV_PII_KEY
 
@@ -40,6 +40,24 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 15.0
     llm_vision_timeout_seconds: float = 90.0
     llm_requests_per_minute: int = 20
+    # Имя параметра лимита ответа: новые модели OpenAI принимают только max_completion_tokens.
+    llm_max_tokens_param: Literal["max_tokens", "max_completion_tokens"] = "max_tokens"
+
+    # Лимиты на пользователя; 0 — без лимита. Окно: час (классификация) или сутки (по UTC).
+    llm_classify_per_hour: int = 20
+    llm_receipt_scans_per_day: int = 10
+    llm_receipt_texts_per_day: int = 30
+    llm_assistant_per_day: int = 30
+    issues_per_day: int = 20
+    photos_per_day: int = 30
+    # Бюджет на весь сервис: запросов, которым нужна модель, в сутки; 0 — без бюджета.
+    # После исчерпания сервис работает без модели (шаблоны, ключевые слова, ручной ввод).
+    llm_daily_request_budget: int = 2000
+    # Входов (и попыток входа) с одного IP в час.
+    logins_per_ip_per_hour: int = 20
+    # Карта показывает дом, только если по нему не меньше стольких обращений: меньше — по ним
+    # можно узнать автора. 1 — показывать все.
+    map_min_issues: int = 3
 
     # Показывать в интерфейсе, что данные демонстрационные.
     demo_data: bool = False

@@ -302,22 +302,28 @@ async def test_letter_takes_addressee_and_deadlines_from_route(
         assert route["response_deadline"]["source"] in text
 
 
-async def test_letter_pdf_includes_photos_of_all_members(
+async def test_letter_includes_photos_only_of_consenting_members(
     client: httpx.AsyncClient, session: AsyncSession, anna: Account, boris: Account, house: House
 ):
+    """Фото соседа видны в письме и PDF, только если он разрешил показать свои данные."""
     photo_ids = []
     for who in (anna, boris):
         upload = await client.post("/photos", files={"file": ("a.png", PNG, "image/png")},
                                    headers=who.headers)  # fmt: skip
         photo_ids.append(upload.json()["id"])
     await report(client, anna, house, photo_ids=photo_ids[:1])
-    collective_id = (
-        await join(client, boris, await report(client, boris, house, photo_ids=photo_ids[1:]))
-    ).json()["id"]
+    boris_issue = await report(client, boris, house, photo_ids=photo_ids[1:])
+    collective_id = (await join(client, boris, boris_issue, consent_letter=True)).json()["id"]
+
     text = await letter_text(client, anna, collective_id)
-    assert "фотографии жителей, 2 шт." in text
+    assert "фотографии жителей, 1 шт." in text  # Анна ещё не согласилась, Борис согласился
     pdf = await client.get(f"/collectives/{collective_id}/letter.pdf", headers=anna.headers)
     assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+    assert pdf.content.count(b"/Subtype /Image") == 1
+
+    patch = {"consent_letter": True}
+    await client.patch(f"/collectives/{collective_id}/membership", json=patch, headers=anna.headers)
+    assert "фотографии жителей, 2 шт." in await letter_text(client, anna, collective_id)
 
 
 # --- согласие, подача, бот ---

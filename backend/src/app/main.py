@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
@@ -42,8 +42,11 @@ def _operation_id(route: APIRoute) -> str:
 
 
 def create_app() -> FastAPI:
+    # Схема и Swagger нужны разработчикам: в проде они закрыты.
+    docs_off = {"docs_url": None, "redoc_url": None, "openapi_url": None}
     app = FastAPI(
         title="Ладно API",
+        **(docs_off if get_settings().app_env == "prod" else {}),
         version="1.0.0",
         description=DESCRIPTION,
         lifespan=lifespan,
@@ -61,6 +64,12 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     register_exception_handlers(app)
+
+    @app.middleware("http")
+    async def no_sniffing(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
 
     api = APIRouter(prefix="/api")
     for router in (

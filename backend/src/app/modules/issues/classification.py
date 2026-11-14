@@ -8,6 +8,7 @@ import json
 
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
+from app.core.cache import TtlCache, text_key
 from app.core.errors import AppError
 from app.core.region import get_region
 from app.llm.client import LLMClient, Message, vision_model
@@ -31,6 +32,22 @@ _SYSTEM = (
     "строка). Учитывай hint категорий: «Другое» — только если ничего не подходит. "
     "Не называй людей и номера квартир. Категории: "
 )
+
+
+# Один и тот же текст не отправляется в модель повторно: ответ хранится сутки под хэшем текста.
+CACHE_TTL_SECONDS = 24 * 3600
+_cache = TtlCache(CACHE_TTL_SECONDS, max_size=1000)
+
+MAX_TOKENS = 300
+
+
+def reset_cache() -> None:
+    _cache.clear()
+
+
+def cached(text: str) -> Classification | None:
+    """Ответ модели на такой же текст без фото; None — спрашивать модель."""
+    return _cache.get(text_key(text))
 
 
 class LLMAnswer(BaseModel):
@@ -85,7 +102,8 @@ def _user_message(text: str, images: list[Image]) -> Message:
     parts: list[dict] = [{"type": "text", "text": text or "Описания нет, смотри на фото."}]
     for data, content_type in images:
         data_uri = f"data:{content_type};base64,{base64.b64encode(data).decode()}"
-        parts.append({"type": "image_url", "image_url": {"url": data_uri}})
+        # Для выбора категории хватает низкого разрешения: так фото обходится в разы дешевле.
+        parts.append({"type": "image_url", "image_url": {"url": data_uri, "detail": "low"}})
     return {"role": "user", "content": parts}
 
 
@@ -94,10 +112,12 @@ async def _ask_llm(llm: LLMClient, text: str, images: list[Image]) -> LLMAnswer 
         {key: c[key] for key in ("id", "title", "hint") if key in c}
         for c in get_region().categories
     ]
-    system = _SYSTEM + json.dumps(categories, ensure_ascii=False)
+    system = _SYSTEM + json.dumps(categories, ensure_ascii=False, separators=(",", ":"))
     messages = [{"role": "system", "content": system}, _user_message(text, images)]
     try:
-        return await ask_json(llm, messages, _ANSWER, vision_model() if images else None)
+        return await ask_json(
+            llm, messages, _ANSWER, vision_model() if images else None, max_tokens=MAX_TOKENS
+        )
     except (AppError, ValidationError, ValueError):
         record_fallback("classify")
         return None
@@ -128,4 +148,7 @@ async def classify(llm: LLMClient | None, text: str, images: list[Image]) -> Cla
         if answer is not None:
             record_fallback("classify", "низкая уверенность")
         result = _by_keywords(text).model_copy(update={"clarification": clarification})
-    return _with_emergency(result, emergency)
+    final = _with_emergency(result, emergency)
+    if answer is not None and not images:
+        _cache.set(text_key(text), final)
+    return final

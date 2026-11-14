@@ -24,4 +24,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=5 \
     CMD python -c "import urllib.request as u; u.urlopen('http://localhost:8000/api/health')"
 # Миграции и сид справочников идемпотентны: выполняются перед каждым стартом.
-CMD ["sh", "-c", "alembic upgrade head && python -m app.seed && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "alembic upgrade head && python -m app.seed && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]

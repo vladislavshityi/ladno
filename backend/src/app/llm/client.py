@@ -7,6 +7,7 @@ import httpx
 
 from app.core.config import get_settings
 from app.core.errors import BadGateway, GatewayTimeout, ServiceUnavailable
+from app.llm.tokens import add_tokens
 
 # Сообщение в формате OpenAI: content — строка или список частей (текст, изображение, файл).
 Message = dict[str, Any]
@@ -16,10 +17,17 @@ UNAVAILABLE = "Языковая модель недоступна"
 
 class LLMClient(Protocol):
     async def complete(
-        self, messages: list[Message], *, json_mode: bool = False, model: str | None = None
+        self,
+        messages: list[Message],
+        *,
+        json_mode: bool = False,
+        model: str | None = None,
+        max_tokens: int | None = None,
     ) -> str: ...
 
-    def stream(self, messages: list[Message]) -> AsyncIterator[str]: ...
+    def stream(
+        self, messages: list[Message], *, max_tokens: int | None = None
+    ) -> AsyncIterator[str]: ...
 
 
 @contextmanager
@@ -64,8 +72,10 @@ class OpenAICompatibleClient:
         timeout: float,
         transport: httpx.AsyncBaseTransport | None = None,
         vision_timeout: float | None = None,
+        max_tokens_param: str = "max_tokens",
     ) -> None:
         self.model = model
+        self._max_tokens_param = max_tokens_param
         self._vision_timeout = httpx.Timeout(vision_timeout or timeout, connect=5.0)
         self._http = {
             "base_url": base_url.rstrip("/"),
@@ -84,9 +94,16 @@ class OpenAICompatibleClient:
         return {"model": model or self.model, "messages": messages, **extra}
 
     async def complete(
-        self, messages: list[Message], *, json_mode: bool = False, model: str | None = None
+        self,
+        messages: list[Message],
+        *,
+        json_mode: bool = False,
+        model: str | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         extra = {"temperature": 0} if json_mode else {}
+        if max_tokens:
+            extra[self._max_tokens_param] = max_tokens
         with _map_transport_errors():
             async with httpx.AsyncClient(**self._http) as client:
                 response = await client.post(
@@ -96,10 +113,15 @@ class OpenAICompatibleClient:
                 )
         _raise_for_status(response)
         with _unexpected_answer():
-            return response.json()["choices"][0]["message"]["content"] or ""
+            body = response.json()
+            add_tokens(int((body.get("usage") or {}).get("total_tokens") or 0))
+            return body["choices"][0]["message"]["content"] or ""
 
-    async def stream(self, messages: list[Message]) -> AsyncIterator[str]:
-        payload = self._payload(messages, stream=True)
+    async def stream(
+        self, messages: list[Message], *, max_tokens: int | None = None
+    ) -> AsyncIterator[str]:
+        extra = {self._max_tokens_param: max_tokens} if max_tokens else {}
+        payload = self._payload(messages, stream=True, **extra)
         with _map_transport_errors():
             async with (
                 httpx.AsyncClient(**self._http) as client,
@@ -165,10 +187,18 @@ class OllamaClient:
         }
 
     async def complete(
-        self, messages: list[Message], *, json_mode: bool = False, model: str | None = None
+        self,
+        messages: list[Message],
+        *,
+        json_mode: bool = False,
+        model: str | None = None,
+        max_tokens: int | None = None,
     ) -> str:
-        extra = {"format": "json", "options": {"temperature": 0}} if json_mode else {}
-        payload = self._payload(messages, model, stream=False, **extra)
+        options = {"temperature": 0} if json_mode else {}
+        if max_tokens:
+            options["num_predict"] = max_tokens
+        extra = {"format": "json"} if json_mode else {}
+        payload = self._payload(messages, model, stream=False, options=options, **extra)
         with _map_transport_errors():
             async with httpx.AsyncClient(**self._http) as client:
                 response = await client.post(
@@ -176,13 +206,20 @@ class OllamaClient:
                 )
         _raise_for_status(response)
         with _unexpected_answer():
-            return response.json().get("message", {}).get("content", "")
+            body = response.json()
+            add_tokens(int(body.get("prompt_eval_count") or 0) + int(body.get("eval_count") or 0))
+            return body.get("message", {}).get("content", "")
 
-    async def stream(self, messages: list[Message]) -> AsyncIterator[str]:
+    async def stream(
+        self, messages: list[Message], *, max_tokens: int | None = None
+    ) -> AsyncIterator[str]:
+        options = {"options": {"num_predict": max_tokens}} if max_tokens else {}
         with _map_transport_errors():
             async with (
                 httpx.AsyncClient(**self._http) as client,
-                client.stream("POST", "/api/chat", json=self._payload(messages)) as response,
+                client.stream(
+                    "POST", "/api/chat", json=self._payload(messages, **options)
+                ) as response,
             ):
                 if response.is_error:
                     await response.aread()
@@ -209,6 +246,7 @@ def get_llm() -> LLMClient | None:
             s.llm_model,
             s.llm_timeout_seconds,
             vision_timeout=s.llm_vision_timeout_seconds,
+            max_tokens_param=s.llm_max_tokens_param,
         )
     return None
 

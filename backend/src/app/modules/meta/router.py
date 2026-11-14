@@ -1,16 +1,19 @@
 from fastapi import APIRouter
 
 from app.core.config import get_settings
+from app.core.deps import SessionDep
+from app.core.quota import budget_exhausted
 from app.core.region import get_region
 from app.llm.client import get_llm, vision_available
 from app.llm.fallbacks import llm_fallback_total
+from app.llm.tokens import tokens_today
 from app.modules.meta.schemas import FaqItem, Meta
 
 router = APIRouter(tags=["meta"])
 
 
 @router.get("/meta", response_model=Meta)
-async def get_meta() -> Meta:
+async def get_meta(session: SessionDep) -> Meta:
     """Возможности сервера: фронтенд скрывает то, что без модели не работает."""
     settings = get_settings()
     return Meta(
@@ -19,6 +22,8 @@ async def get_meta() -> Meta:
         region=settings.region,
         demo_data=settings.demo_data,
         llm_fallbacks=dict(llm_fallback_total),
+        llm_budget_exhausted=await budget_exhausted(session),
+        llm_tokens_today=tokens_today(),
     )
 
 
