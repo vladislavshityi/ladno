@@ -16,7 +16,7 @@
 ![Telegram](https://img.shields.io/badge/Telegram-Mini_App-26A5E4?logo=telegram&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
-[Бот @ladnovl_bot](https://t.me/ladnovl_bot)
+[Бот @ladnohomebot](https://t.me/ladnohomebot)
 
 </div>
 
