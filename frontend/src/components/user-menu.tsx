@@ -18,7 +18,8 @@ export function UserMenu() {
   const { token, signOut } = useAuth()
   const navigate = useNavigate()
   const { pathname, search } = useLocation()
-  const name = me?.first_name ?? 'Житель'
+  // The name from the profile wins over the Telegram first name, so both places agree.
+  const name = me?.full_name?.trim() || me?.first_name || 'Житель'
 
   // Public pages are open to visitors: offer to sign in instead of a profile menu.
   if (!token) {
