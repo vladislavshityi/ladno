@@ -8,16 +8,18 @@ export interface NavItemDef {
   icon: LucideIcon
   /** Hidden when the server has no language model. */
   requiresLlm?: boolean
+  /** Kept in the phone tab bar; the rest go under «Ещё». */
+  primary?: boolean
 }
 
 export const NAV_ITEMS: NavItemDef[] = [
-  { to: '/issues/new', label: 'Кому пожаловаться?', shortLabel: 'Жалоба', icon: FilePlus2 },
-  { to: '/issues', label: 'Мои обращения', shortLabel: 'Обращения', icon: ListChecks },
-  { to: '/receipts', label: 'Квитанции', shortLabel: 'Квитанции', icon: ReceiptText },
+  { to: '/issues/new', label: 'Кому пожаловаться?', shortLabel: 'Жалоба', icon: FilePlus2, primary: true },
+  { to: '/issues', label: 'Мои обращения', shortLabel: 'Обращения', icon: ListChecks, primary: true },
+  { to: '/receipts', label: 'Квитанции', shortLabel: 'Квитанции', icon: ReceiptText, primary: true },
   { to: '/ratings', label: 'Рейтинг УК', shortLabel: 'Рейтинг', icon: Trophy },
   { to: '/map', label: 'Карта проблем', shortLabel: 'Карта', icon: MapPin },
   { to: '/assistant', label: 'Ассистент', shortLabel: 'Ассистент', icon: Bot, requiresLlm: true },
-  { to: '/profile', label: 'Мой дом', shortLabel: 'Мой дом', icon: Home },
+  { to: '/profile', label: 'Мой дом', shortLabel: 'Мой дом', icon: Home, primary: true },
 ]
 
 export function useNavItems() {
