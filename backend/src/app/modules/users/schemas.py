@@ -2,8 +2,9 @@ import uuid
 from datetime import datetime
 from typing import Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
+from app.core import fields
 from app.core.schemas import ApiModel, ORMModel
 from app.modules.houses.schemas import HouseRead, ManagementCompanyRead
 from app.modules.issues.schemas import IssueRead, PhotoRead
@@ -31,27 +32,22 @@ class UserRead(ORMModel):
 
 class ProfileUpdate(BaseModel):
     house_id: int | None = Field(None, description="Дом из поиска адреса")
-    custom_address: str | None = Field(
-        None, max_length=500, description="Адрес, если дома нет в справочнике; вместо house_id"
+    custom_address: fields.CustomAddress = Field(
+        None, description="Адрес, если дома нет в справочнике; вместо house_id"
     )
-    entrance: str | None = Field(None, max_length=8)
-    full_name: str | None = Field(None, max_length=200, description="Подставляется в письма кодом")
-    phone: str | None = Field(None, max_length=32)
-    email: str | None = Field(None, max_length=200)
-    apartment: str | None = Field(None, max_length=16)
+    entrance: fields.Entrance = Field(None, description="Число от 1 до 99")
+    full_name: fields.FullName = Field(
+        None, description="2-3 слова; регистр приводится к «Иванов Иван». Подставляется в письма"
+    )
+    phone: fields.Phone = Field(None, description="Российский номер; хранится как +7 900 123-45-67")
+    email: fields.Email = Field(None, description="Хранится в нижнем регистре")
+    apartment: fields.Apartment = Field(None, description="До 6 символов: 12, 12а, 12/1")
     management_company_id: int | None = Field(
         None, description="Если не задана, берётся УК дома из справочника"
     )
-    custom_company_name: str | None = Field(
-        None,
-        max_length=300,
-        description="УК или ТСЖ, которых нет в списке; вместо management_company_id",
+    custom_company_name: fields.CustomCompany = Field(
+        None, description="УК или ТСЖ, которых нет в списке; вместо management_company_id"
     )
-
-    @field_validator("custom_address", "custom_company_name")
-    @classmethod
-    def _blank_is_none(cls, value: str | None) -> str | None:
-        return (value or "").strip() or None
 
     @model_validator(mode="after")
     def _one_of_pair(self) -> Self:

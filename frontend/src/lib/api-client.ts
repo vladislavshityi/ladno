@@ -4,11 +4,14 @@ import { getToken, setToken } from '@/lib/auth-token'
 export class ApiError extends Error {
   status: number
   code: string
-  constructor(status: number, message: string, code = 'unknown_error') {
+  /** Per-field messages of a 422 answer, keyed by the field path ("phone", "lines.0.volume"). */
+  fields: Record<string, string>
+  constructor(status: number, message: string, code = 'unknown_error', fields: Record<string, string> = {}) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
+    this.fields = fields
   }
 }
 
@@ -41,7 +44,7 @@ export async function parseError(res: Response): Promise<ApiError> {
   }
   const detail = typeof body?.detail === 'string' ? body.detail : res.statusText || 'Ошибка запроса'
   const message = res.status === 429 ? RATE_LIMIT_MESSAGE : detail
-  return new ApiError(res.status, message, body?.code)
+  return new ApiError(res.status, message, body?.code, body?.fields ?? {})
 }
 
 async function send(method: string, path: string, opts: RequestOptions = {}): Promise<Response> {
@@ -95,4 +98,9 @@ export const api = {
 
 export function errorMessage(err: unknown): string {
   return err instanceof ApiError ? err.message : 'Что-то пошло не так'
+}
+
+/** Field messages from a failed request, so a form can show them under the inputs. */
+export function fieldErrors(err: unknown): Record<string, string> {
+  return err instanceof ApiError ? err.fields : {}
 }

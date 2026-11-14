@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.core import fields
 from app.core.schemas import ApiModel, Money, ORMModel
 
 ServiceCode = Literal[
@@ -72,9 +73,9 @@ class ReceiptSample(ApiModel):
 
 
 class LinePatch(BaseModel):
-    volume: Money | None = None
-    tariff: Money | None = None
-    accrued: Money | None = None
+    volume: fields.VolumeAmount = None
+    tariff: fields.TariffAmount = None
+    accrued: fields.MoneyAmount = None
 
 
 class ParsedLine(BaseModel):
@@ -103,20 +104,31 @@ class ParsedReceipt(BaseModel):
 
 
 class ManualCompany(BaseModel):
-    name: str | None = Field(None, max_length=200)
+    name: fields.ShortName = None
     inn: str | None = Field(None, pattern=r"^\d{10}(\d{2})?$")
+
+
+class ManualLine(BaseModel):
+    service_code: ServiceCode = "other"
+    service_name: fields.RequiredName
+    unit: fields.Unit = None
+    volume: fields.VolumeAmount = None
+    tariff: fields.TariffAmount = None
+    accrued: fields.RequiredMoney
+    recalculation: fields.SignedMoney = Decimal("0")
+    method: CalcMethod = "unknown"
 
 
 class ManualReceipt(BaseModel):
     """Квитанция, введённая жителем вручную. Полный лицевой счёт и ФИО не принимаются."""
 
-    period: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="YYYY-MM")
+    period: fields.Period = Field(description="YYYY-MM, от 2020-01 до следующего месяца")
     management_company: ManualCompany | None = None
     account_last4: str | None = Field(None, pattern=r"^\d{4}$", description="Последние 4 цифры")
-    area_m2: Money | None = None
-    residents: int | None = Field(None, ge=0, le=99)
-    lines: list[ParsedLine] = Field(min_length=1, max_length=50)
-    total: Money | None = Field(None, description="Итог к оплате; пусто — сумма строк")
+    area_m2: fields.AreaAmount = None
+    residents: int | None = Field(None, ge=0, le=30)
+    lines: list[ManualLine] = Field(min_length=1, max_length=50)
+    total: fields.MoneyAmount = Field(None, description="Итог к оплате; пусто — сумма строк")
 
 
 class ServiceOption(ApiModel):

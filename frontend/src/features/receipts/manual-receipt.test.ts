@@ -25,18 +25,31 @@ describe('toManualReceipt', () => {
     expect(result).toMatchObject({ ok: true, payload: { management_company: { name: 'ООО «УК»', inn: '2540111333' } } })
   })
 
-  it('explains what is wrong', () => {
-    expect(toManualReceipt({ ...filled(), period: '' })).toEqual({ ok: false, error: 'Укажите месяц, за который квитанция' })
-    expect(toManualReceipt({ ...filled(), inn: '123' })).toMatchObject({ ok: false })
+  it('explains what is wrong under each field', () => {
+    expect(toManualReceipt({ ...filled(), period: '' })).toMatchObject({ ok: false, errors: { header: { period: 'Укажите месяц, за который квитанция' } } })
+    expect(toManualReceipt({ ...filled(), inn: '123' })).toMatchObject({ ok: false, errors: { header: { inn: 'ИНН состоит из 10 или 12 цифр' } } })
     const noAmount = filled()
     noAmount.lines[0].accrued = ''
-    expect(toManualReceipt(noAmount)).toEqual({ ok: false, error: 'Строка 1: укажите начислено' })
+    expect(toManualReceipt(noAmount)).toMatchObject({ ok: false, errors: { lines: { [noAmount.lines[0].key]: { accrued: 'Укажите начислено' } } } })
     const noService = filled()
     noService.lines[0].service_name = ''
-    expect(toManualReceipt(noService)).toEqual({ ok: false, error: 'Строка 1: выберите услугу' })
+    expect(toManualReceipt(noService)).toMatchObject({ ok: false, errors: { lines: { [noService.lines[0].key]: { service: 'Выберите услугу' } } } })
     const bad = filled()
     bad.lines[0].volume = 'много'
     expect(toManualReceipt(bad)).toMatchObject({ ok: false })
+  })
+
+  it('applies the server limits', () => {
+    expect(toManualReceipt({ ...filled(), residents: '31' })).toMatchObject({ ok: false })
+    expect(toManualReceipt({ ...filled(), area: '0,5' })).toMatchObject({ ok: false })
+    expect(toManualReceipt({ ...filled(), total: '1000000,01' })).toMatchObject({ ok: false })
+    expect(toManualReceipt({ ...filled(), period: '2019-12' })).toMatchObject({ ok: false })
+    const cents = filled()
+    cents.lines[0].accrued = '10,005'
+    expect(toManualReceipt(cents)).toMatchObject({ ok: false })
+    const refund = filled()
+    refund.lines[0].recalculation = '-150,50'
+    expect(toManualReceipt(refund)).toMatchObject({ ok: true })
   })
 })
 

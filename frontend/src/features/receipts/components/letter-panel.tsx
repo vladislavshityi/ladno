@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { Download, FileText, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CopyButton } from '@/components/copy-button'
+import { ApplicantPrompt } from '@/features/profile/components/applicant-prompt'
+import { useApplicantPrompt } from '@/features/profile/use-applicant-prompt'
 import { useRecalculationLetter } from '../hooks'
 
 function downloadText(text: string) {
@@ -15,13 +18,33 @@ function downloadText(text: string) {
 
 export function LetterPanel({ receiptId }: { receiptId: string }) {
   const letter = useRecalculationLetter(receiptId)
+  const applicant = useApplicantPrompt()
+  const [asking, setAsking] = useState(false)
+
+  const make = () => letter.mutate()
+  // Without a name in the profile the letter would carry marks, so ask for it first.
+  const start = () => (applicant.visible ? setAsking(true) : make())
+  const saveAndMake = async () => {
+    if (await applicant.save()) make()
+  }
 
   if (!letter.data) {
     return (
-      <Button size="lg" className="justify-self-start" disabled={letter.isPending} onClick={() => letter.mutate()}>
-        {letter.isPending ? <Loader2 className="animate-spin" /> : <FileText />}
-        Заявление на перерасчёт
-      </Button>
+      <div className="grid gap-3">
+        {asking && applicant.visible ? (
+          <ApplicantPrompt
+            prompt={applicant}
+            idPrefix="recalc"
+            onSkip={make}
+            submit={{ label: 'Сохранить и составить заявление', onClick: () => void saveAndMake(), pending: applicant.saving || letter.isPending }}
+          />
+        ) : (
+          <Button size="lg" className="justify-self-start" disabled={letter.isPending} onClick={start}>
+            {letter.isPending ? <Loader2 className="animate-spin" /> : <FileText />}
+            Заявление на перерасчёт
+          </Button>
+        )}
+      </div>
     )
   }
 

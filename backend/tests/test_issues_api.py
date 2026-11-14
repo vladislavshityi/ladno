@@ -365,7 +365,7 @@ async def test_missing_applicant_fields_and_refresh_letter(
         await client.post(f"/issues/{issue['id']}/refresh-letter", headers=anna.headers)
     ).json()
     assert refreshed["missing_applicant_fields"] == []
-    assert "От: Иванов И. И., кв. 12, тел. +79990001122" in refreshed["draft"]["full"]
+    assert "От: Иванов И. И., кв. 12, тел. +7 999 000-11-22" in refreshed["draft"]["full"]
     assert "Очень прошу устранить" in refreshed["draft"]["full"]  # правки остались
     assert refreshed["draft"]["pos_short"] == issue["draft"]["pos_short"]
 

@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/form-field'
 import type { ReceiptLine } from '@/types/models'
+import { errorMessage } from '@/lib/api-client'
+import { MONEY, TARIFF, VOLUME, checkDecimal } from '@/lib/validation'
 import { usePatchLine } from '../hooks'
 
 interface Props {
@@ -14,9 +17,9 @@ interface Props {
 }
 
 const FIELDS = [
-  { key: 'volume', label: 'Объём' },
-  { key: 'tariff', label: 'Тариф' },
-  { key: 'accrued', label: 'Начислено, ₽' },
+  { key: 'volume', label: 'Объём', rule: VOLUME },
+  { key: 'tariff', label: 'Тариф', rule: TARIFF },
+  { key: 'accrued', label: 'Начислено, ₽', rule: { ...MONEY, label: 'Начислено' } },
 ] as const
 
 /** Lets the resident fix values the recognition got wrong; totals are recalculated by the server. */
@@ -28,12 +31,15 @@ export function LineEditDialog({ receiptId, line, onClose }: Props) {
     accrued: String(line.accrued),
   })
 
+  const [errors, setErrors] = useState<Partial<Record<(typeof FIELDS)[number]['key'], string>>>({})
+
   const save = () => {
-    const num = (v: string) => (v.trim() === '' ? null : v.trim().replace(',', '.'))
-    patch.mutate(
-      { lineId: line.id, patch: { volume: num(values.volume), tariff: num(values.tariff), accrued: num(values.accrued) } },
-      { onSuccess: onClose },
-    )
+    const checked = FIELDS.map((f) => [f.key, checkDecimal(values[f.key], f.rule)] as const)
+    const found = Object.fromEntries(checked.flatMap(([key, c]) => (c.ok ? [] : [[key, c.error]])))
+    setErrors(found)
+    if (Object.keys(found).length) return
+    const [volume, tariff, accrued] = checked.map(([, c]) => (c.ok ? c.value : null))
+    patch.mutate({ lineId: line.id, patch: { volume, tariff, accrued } }, { onSuccess: onClose, onError: (err) => toast.error(errorMessage(err)) })
   }
 
   return (
@@ -45,12 +51,17 @@ export function LineEditDialog({ receiptId, line, onClose }: Props) {
         </DialogHeader>
         <div className="grid gap-4 sm:grid-cols-3">
           {FIELDS.map((f) => (
-            <FormField key={f.key} label={f.label} htmlFor={`line-${f.key}`}>
+            <FormField key={f.key} label={f.label} htmlFor={`line-${f.key}`} error={errors[f.key]}>
               <Input
                 id={`line-${f.key}`}
                 inputMode="decimal"
+                maxLength={12}
+                aria-invalid={Boolean(errors[f.key])}
                 value={values[f.key]}
-                onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                onChange={(e) => {
+                  setValues((v) => ({ ...v, [f.key]: e.target.value }))
+                  setErrors((er) => ({ ...er, [f.key]: undefined }))
+                }}
               />
             </FormField>
           ))}

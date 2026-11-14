@@ -5,13 +5,14 @@ import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/form-field'
 import { useMe } from '@/features/auth/hooks'
 import { AddressSearch } from '@/features/houses/components/address-search'
+import { checkApartment, checkEntrance, checkFloor, checkPlace } from '@/lib/validation'
 import { StepLayout } from '../step-layout'
 import type { IssueLocation, StepProps } from '../../wizard'
 
 const LOCATION_FIELDS = [
-  { key: 'entrance', label: 'Подъезд', placeholder: '2' },
-  { key: 'floor', label: 'Этаж', placeholder: '5' },
-  { key: 'apartment', label: 'Квартира', placeholder: '34' },
+  { key: 'entrance', label: 'Подъезд', placeholder: '2', maxLength: 2, inputMode: 'numeric', check: checkEntrance },
+  { key: 'floor', label: 'Этаж', placeholder: '5', maxLength: 4, inputMode: 'text', check: checkFloor },
+  { key: 'apartment', label: 'Квартира', placeholder: '34', maxLength: 6, inputMode: 'text', check: checkApartment },
 ] as const
 
 export function AddressStep({ data, setData, onNext, onBack }: StepProps) {
@@ -23,6 +24,16 @@ export function AddressStep({ data, setData, onNext, onBack }: StepProps) {
   const showSearch = changing || !address
   const setLocation = (key: keyof IssueLocation, value: string) =>
     setData((d) => ({ ...d, location: { ...d.location, [key]: value } }))
+  const errors: Partial<Record<keyof IssueLocation, string>> = {}
+  for (const f of [...LOCATION_FIELDS, { key: 'place' as const, check: checkPlace }]) {
+    const result = f.check(data.location[f.key])
+    if (!result.ok) errors[f.key] = result.error
+  }
+  // Tidy a valid value when the resident leaves the field: "03" -> "3", "12А" -> "12а".
+  const tidy = (key: keyof IssueLocation, check: (raw: string) => ReturnType<typeof checkPlace>) => {
+    const result = check(data.location[key])
+    if (result.ok) setLocation(key, result.value ?? '')
+  }
 
   return (
     <StepLayout
@@ -30,7 +41,7 @@ export function AddressStep({ data, setData, onNext, onBack }: StepProps) {
       description="По адресу определим управляющую компанию."
       onBack={onBack}
       onNext={onNext}
-      nextDisabled={!address}
+      nextDisabled={!address || Object.values(errors).some(Boolean)}
     >
       {showSearch ? (
         <AddressSearch
@@ -60,24 +71,29 @@ export function AddressStep({ data, setData, onNext, onBack }: StepProps) {
         <legend className="mb-1 text-sm font-medium">
           Где именно <span className="font-normal text-muted-foreground">— по желанию</span>
         </legend>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 items-start gap-3">
           {LOCATION_FIELDS.map((f) => (
-            <FormField key={f.key} label={f.label} htmlFor={`location-${f.key}`}>
+            <FormField key={f.key} label={f.label} htmlFor={`location-${f.key}`} error={errors[f.key]}>
               <Input
                 id={`location-${f.key}`}
-                inputMode="numeric"
-                maxLength={8}
+                inputMode={f.inputMode}
+                maxLength={f.maxLength}
+                autoComplete="off"
+                aria-invalid={Boolean(errors[f.key])}
                 value={data.location[f.key]}
                 onChange={(e) => setLocation(f.key, e.target.value)}
+                onBlur={() => tidy(f.key, f.check)}
                 placeholder={f.placeholder}
               />
             </FormField>
           ))}
         </div>
-        <FormField label="Место" htmlFor="location-place">
+        <FormField label="Место" htmlFor="location-place" error={errors.place}>
           <Input
             id="location-place"
             maxLength={200}
+            aria-invalid={Boolean(errors.place)}
+            onBlur={() => tidy('place', checkPlace)}
             value={data.location.place}
             onChange={(e) => setLocation('place', e.target.value)}
             placeholder="Например: у лифта, во дворе у детской площадки"

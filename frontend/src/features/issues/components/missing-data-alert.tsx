@@ -3,15 +3,17 @@ import { Loader2, UserPen } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { FormField } from '@/components/form-field'
 import { useMe } from '@/features/auth/hooks'
 import { useUpdateProfile } from '@/features/profile/hooks'
-import { LETTER_FIELDS, type LetterValues } from '@/features/profile/letter-fields'
+import { LETTER_FIELDS } from '@/features/profile/letter-fields'
+import { useLetterForm } from '@/features/profile/use-letter-form'
+import { LetterInputs } from '@/features/profile/components/letter-inputs'
 import { toProfileUpdate } from '@/features/profile/profile-update'
 import { errorMessage } from '@/lib/api-client'
 import type { Issue, User } from '@/types/models'
 import { useRefreshLetter } from '../hooks'
+
+const KEYS = LETTER_FIELDS.map((f) => f.key)
 
 type Missing = Issue['missing_applicant_fields'][number]
 
@@ -26,16 +28,12 @@ const sentence = (missing: Missing[]) => {
 function ApplicantDialog({ me, issueId, open, onOpenChange }: { me: User; issueId: string; open: boolean; onOpenChange: (open: boolean) => void }) {
   const update = useUpdateProfile()
   const refresh = useRefreshLetter(issueId)
-  const [values, setValues] = useState<LetterValues>({
-    full_name: me.full_name ?? '',
-    phone: me.phone ?? '',
-    email: me.email ?? '',
-    apartment: me.apartment ?? '',
-  })
+  const form = useLetterForm(me, KEYS)
   const pending = update.isPending || refresh.isPending
 
   const save = () => {
-    const changes = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v.trim() || null]))
+    const changes = form.validate()
+    if (!changes) return
     update.mutate(toProfileUpdate(me, changes), {
       onSuccess: () =>
         refresh.mutate(undefined, {
@@ -45,7 +43,9 @@ function ApplicantDialog({ me, issueId, open, onOpenChange }: { me: User; issueI
           },
           onError: (err) => toast.error(errorMessage(err)),
         }),
-      onError: (err) => toast.error(errorMessage(err)),
+      onError: (err) => {
+        if (!form.showServerErrors(err)) toast.error(errorMessage(err))
+      },
     })
   }
 
@@ -58,23 +58,14 @@ function ApplicantDialog({ me, issueId, open, onOpenChange }: { me: User; issueI
         </DialogHeader>
         <form
           id="applicant-form"
+          noValidate
           className="grid gap-4 sm:grid-cols-2"
           onSubmit={(e) => {
             e.preventDefault()
             save()
           }}
         >
-          {LETTER_FIELDS.map((f) => (
-            <FormField key={f.key} label={f.label} htmlFor={`applicant-${f.key}`}>
-              <Input
-                id={`applicant-${f.key}`}
-                value={values[f.key]}
-                maxLength={f.max}
-                autoComplete={f.autoComplete}
-                onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-              />
-            </FormField>
-          ))}
+          <LetterInputs form={form} idPrefix="applicant" />
         </form>
         <DialogFooter>
           <Button type="submit" form="applicant-form" size="lg" disabled={pending}>

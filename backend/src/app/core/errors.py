@@ -69,10 +69,92 @@ class GatewayTimeout(AppError):
     default_code = "gateway_timeout"
 
 
+FIELD_LABELS = {
+    "full_name": "ФИО",
+    "phone": "Телефон",
+    "email": "E-mail",
+    "apartment": "Квартира",
+    "entrance": "Подъезд",
+    "custom_address": "Адрес",
+    "custom_company_name": "Управляющая компания",
+    "description": "Описание",
+    "text": "Описание",
+    "location_details": "Место",
+    "external_ref": "Номер обращения",
+    "period": "Период",
+    "area_m2": "Площадь",
+    "residents": "Проживающие",
+    "total": "Итог",
+    "volume": "Объём",
+    "tariff": "Тариф",
+    "accrued": "Начислено",
+    "recalculation": "Перерасчёт",
+    "service_name": "Услуга",
+    "unit": "Единица измерения",
+    "name": "Название",
+    "inn": "ИНН",
+    "account_last4": "Лицевой счёт",
+    "content": "Сообщение",
+    "q": "Запрос",
+}
+
+# Типы ошибок pydantic, у которых английский текст заменяется русским.
+_TYPE_MESSAGES = {
+    "missing": "Обязательное поле",
+    "string_type": "Нужна строка",
+    "int_type": "Нужно целое число",
+    "int_parsing": "Нужно целое число",
+    "decimal_type": "Нужно число",
+    "decimal_parsing": "Нужно число",
+    "bool_type": "Нужно да или нет",
+    "uuid_parsing": "Некорректный идентификатор",
+    "json_invalid": "Некорректный JSON",
+    "too_short": "Нужна хотя бы одна запись",
+}
+
+
+def _message(err: dict) -> str:
+    kind, ctx = err["type"], err.get("ctx", {})
+    if kind == "value_error":
+        return str(ctx.get("error", err["msg"]))
+    if kind == "string_too_long":
+        return f"Не длиннее {ctx['max_length']} символов"
+    if kind == "string_too_short":
+        return f"Не короче {ctx['min_length']} символов"
+    if kind == "string_pattern_mismatch":
+        return "Неверный формат"
+    if kind in ("greater_than_equal", "greater_than"):
+        return f"Не меньше {ctx.get('ge', ctx.get('gt'))}"
+    if kind in ("less_than_equal", "less_than"):
+        return f"Не больше {ctx.get('le', ctx.get('lt'))}"
+    if kind in ("too_long", "list_type"):
+        return "Слишком много записей" if kind == "too_long" else "Нужен список"
+    return _TYPE_MESSAGES.get(kind, err["msg"])
+
+
+def validation_fields(errors: list[dict]) -> dict[str, str]:
+    """Ошибки по полям: ключ — путь к полю без «body» (например, lines.0.volume)."""
+    result: dict[str, str] = {}
+    for err in errors:
+        path = ".".join(str(p) for p in err["loc"][1:])
+        result.setdefault(path or "body", _message(err))
+    return result
+
+
+def _field_label(path: str) -> str:
+    name = path.split(".")[-1]
+    return FIELD_LABELS.get(name, name)
+
+
 def _error_response(
-    status_code: int, detail: str, code: str, headers: dict[str, str] | None = None
+    status_code: int,
+    detail: str,
+    code: str,
+    headers: dict[str, str] | None = None,
+    fields: dict[str, str] | None = None,
 ) -> JSONResponse:
-    return JSONResponse({"detail": detail, "code": code}, status_code=status_code, headers=headers)
+    body = {"detail": detail, "code": code, "fields": fields or {}}
+    return JSONResponse(body, status_code=status_code, headers=headers)
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -88,8 +170,9 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def handle_request_validation(_: Request, exc: RequestValidationError) -> JSONResponse:
+        fields = validation_fields(exc.errors())
         parts = [
-            f"{'.'.join(str(p) for p in err['loc'][1:])}: {err['msg']}".strip(": ")
-            for err in exc.errors()
+            f"{_field_label(path)}: {text}" if path != "body" else text
+            for path, text in fields.items()
         ]
-        return _error_response(422, "; ".join(parts), "validation_error")
+        return _error_response(422, "; ".join(parts), "validation_error", fields=fields)

@@ -26,6 +26,11 @@ describe('toProfileUpdate', () => {
     })
   })
 
+  it('drops saved values the server would reject', () => {
+    const update = toProfileUpdate({ ...me, full_name: 'Иванов', phone: '123', apartment: '12а', email: 'A@B.RU' } as User)
+    expect(update).toMatchObject({ full_name: null, phone: null, apartment: '12а', email: 'a@b.ru' })
+  })
+
   it('lets a chosen house replace the manual address', () => {
     const update = toProfileUpdate(me, { house_id: 5, custom_address: null })
     expect(update.house_id).toBe(5)

@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input'
 import type { ManagementCompany } from '@/types/models'
 import { useCompanies } from '../hooks'
+import { checkCompanyName } from '@/lib/validation'
 import { ManualEntry, ManualEntryButton } from './manual-entry'
 
 interface Props {
@@ -40,6 +41,7 @@ export function CompanyPicker({ open, onOpenChange, onSelect, onCustom }: Props)
             placeholder="Название"
             submitLabel="Использовать это название"
             maxLength={300}
+            check={checkCompanyName}
             onSubmit={onCustom}
             onCancel={() => setManual(false)}
             autoFocus
@@ -48,7 +50,7 @@ export function CompanyPicker({ open, onOpenChange, onSelect, onCustom }: Props)
           <>
             <div className="relative">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Название" aria-label="Название УК" className="pl-9" autoFocus />
+              <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Название" aria-label="Название УК" maxLength={200} autoComplete="off" className="pl-9" autoFocus />
               {isFetching && <Loader2 className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
             </div>
             <ul className="-mx-1 max-h-72 overflow-y-auto">

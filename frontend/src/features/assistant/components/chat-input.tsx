@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { ArrowUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { stripControl } from '@/lib/validation'
 import { Textarea } from '@/components/ui/textarea'
 
 export function ChatInput({ onSend, disabled }: { onSend: (text: string) => void; disabled: boolean }) {
   const [text, setText] = useState('')
   const submit = () => {
-    const value = text.trim()
+    const value = stripControl(text).trim()
     if (!value || disabled) return
     onSend(value)
     setText('')

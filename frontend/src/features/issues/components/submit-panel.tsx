@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/form-field'
 import { Skeleton } from '@/components/ui/skeleton'
+import { checkReference } from '@/lib/validation'
 import { openExternal } from '@/lib/telegram'
 import type { Issue } from '@/types/models'
 import { useChannels, usePatchIssue, useSubmission } from '../hooks'
@@ -17,6 +18,7 @@ export function SubmitPanel({ issue }: { issue: Issue }) {
   const patch = usePatchIssue(issue.id)
   const email = channels?.find((c) => c.name === 'email')
   const [ref, setRef] = useState('')
+  const [refError, setRefError] = useState<string>()
 
   return (
     <Card className="rounded-2xl border-0 bg-primary/6 shadow-sm ring-1 ring-primary/25">
@@ -47,11 +49,23 @@ export function SubmitPanel({ issue }: { issue: Issue }) {
           className="grid gap-3 border-t border-primary/15 pt-4"
           onSubmit={(e) => {
             e.preventDefault()
-            patch.mutate({ status: 'submitted', external_ref: ref.trim() || null })
+            const checked = checkReference(ref)
+            if (!checked.ok) return setRefError(checked.error)
+            patch.mutate({ status: 'submitted', external_ref: checked.value })
           }}
         >
-          <FormField label="Номер или ссылка обращения" htmlFor="external-ref" hint="Появится после подачи. Можно добавить позже.">
-            <Input id="external-ref" value={ref} maxLength={100} onChange={(e) => setRef(e.target.value)} />
+          <FormField label="Номер или ссылка обращения" htmlFor="external-ref" hint="Появится после подачи. Можно добавить позже." error={refError}>
+            <Input
+              id="external-ref"
+              value={ref}
+              maxLength={100}
+              autoComplete="off"
+              aria-invalid={Boolean(refError)}
+              onChange={(e) => {
+                setRef(e.target.value)
+                setRefError(undefined)
+              }}
+            />
           </FormField>
           <Button type="submit" variant="secondary" size="lg" className="justify-self-start" disabled={patch.isPending}>
             {patch.isPending ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}

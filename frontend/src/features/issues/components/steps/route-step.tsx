@@ -3,6 +3,8 @@ import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { TriangleAlert } from 'lucide-react'
 import { useMe } from '@/features/auth/hooks'
+import { ApplicantPrompt } from '@/features/profile/components/applicant-prompt'
+import { useApplicantPrompt } from '@/features/profile/use-applicant-prompt'
 import { SimilarBanner } from '@/features/collectives/components/similar-banner'
 import { useSimilar } from '@/features/collectives/hooks'
 import { EmergencyAlert } from '../emergency-alert'
@@ -18,6 +20,7 @@ interface Props extends StepProps {
 
 export function RouteStep({ data, setData, onCreate, creating, onBack }: Props) {
   const { data: me } = useMe()
+  const applicant = useApplicantPrompt()
   const { data: route, isError, refetch } = useRoutePreview({
     category: data.category!,
     answers: data.answers,
@@ -30,15 +33,20 @@ export function RouteStep({ data, setData, onCreate, creating, onBack }: Props) 
   const houseId = data.house?.house_id ?? (data.customAddress ? null : me?.house?.id)
   const { data: similar } = useSimilar(houseId, data.category!)
 
+  // The resident's data goes to the profile first, so the new letter already carries it.
+  const create = async () => {
+    if (await applicant.save()) onCreate()
+  }
+
   return (
     <StepLayout
       title="Кому писать"
       description="Адресат, сроки и порядок действий — по правилам региона."
       onBack={onBack}
-      onNext={onCreate}
+      onNext={() => void create()}
       nextLabel="Составить обращение"
       nextDisabled={!route}
-      pending={creating}
+      pending={creating || applicant.saving}
     >
       {classification?.is_emergency && classification.emergency && <EmergencyAlert emergency={classification.emergency} />}
       {similar && similar.count > 0 && (
@@ -51,6 +59,7 @@ export function RouteStep({ data, setData, onCreate, creating, onBack }: Props) 
       ) : (
         <Skeleton className="h-64 rounded-2xl" />
       )}
+      {route && <ApplicantPrompt prompt={applicant} idPrefix="applicant" onSkip={onCreate} />}
     </StepLayout>
   )
 }

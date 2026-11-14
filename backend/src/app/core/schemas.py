@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, PlainSerializer
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 
 
 class ApiModel(BaseModel):
@@ -17,6 +17,10 @@ class ORMModel(ApiModel):
 class ErrorResponse(ApiModel):
     detail: str
     code: str
+    fields: dict[str, str] = Field(
+        default_factory=dict,
+        description="Ошибки проверки по полям (для 422): путь к полю -> сообщение",
+    )
 
 
 # В JSON деньги и объёмы — строки с точкой, чтобы не терять точность во float.

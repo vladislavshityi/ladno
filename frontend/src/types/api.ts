@@ -1579,6 +1579,13 @@ export interface components {
             detail: string;
             /** Code */
             code: string;
+            /**
+             * Fields
+             * @description Ошибки проверки по полям (для 422): путь к полю -> сообщение
+             */
+            fields: {
+                [key: string]: string;
+            };
         };
         /** EscalationStep */
         EscalationStep: {
@@ -1839,6 +1846,36 @@ export interface components {
             /** Inn */
             inn?: string | null;
         };
+        /** ManualLine */
+        ManualLine: {
+            /**
+             * Service Code
+             * @default other
+             * @enum {string}
+             */
+            service_code: "maintenance" | "cold_water" | "hot_water" | "hot_water_heat" | "sewerage" | "heating" | "electricity" | "gas" | "waste" | "capital_repair" | "common_property_resources" | "intercom" | "other";
+            /** Service Name */
+            service_name: string;
+            /** Unit */
+            unit?: string | null;
+            /** Volume */
+            volume?: number | string | null;
+            /** Tariff */
+            tariff?: number | string | null;
+            /** Accrued */
+            accrued: number | string;
+            /**
+             * Recalculation
+             * @default 0
+             */
+            recalculation: number | string;
+            /**
+             * Method
+             * @default unknown
+             * @enum {string}
+             */
+            method: "meter" | "norm" | "norm_increased" | "unknown";
+        };
         /**
          * ManualReceipt
          * @description Квитанция, введённая жителем вручную. Полный лицевой счёт и ФИО не принимаются.
@@ -1846,7 +1883,7 @@ export interface components {
         ManualReceipt: {
             /**
              * Period
-             * @description YYYY-MM
+             * @description YYYY-MM, от 2020-01 до следующего месяца
              */
             period: string;
             management_company?: components["schemas"]["ManualCompany"] | null;
@@ -1860,7 +1897,7 @@ export interface components {
             /** Residents */
             residents?: number | null;
             /** Lines */
-            lines: components["schemas"]["ParsedLine"][];
+            lines: components["schemas"]["ManualLine"][];
             /**
              * Total
              * @description Итог к оплате; пусто — сумма строк
@@ -1947,38 +1984,6 @@ export interface components {
             /** Text */
             text: string;
         };
-        /** ParsedLine */
-        ParsedLine: {
-            /**
-             * Service Code
-             * @default other
-             * @enum {string}
-             */
-            service_code: "maintenance" | "cold_water" | "hot_water" | "hot_water_heat" | "sewerage" | "heating" | "electricity" | "gas" | "waste" | "capital_repair" | "common_property_resources" | "intercom" | "other";
-            /** Service Name */
-            service_name: string;
-            /** Unit */
-            unit?: string | null;
-            /** Volume */
-            volume?: number | string | null;
-            /** Tariff */
-            tariff?: number | string | null;
-            /** Accrued */
-            accrued: number | string;
-            /**
-             * Recalculation
-             * @default 0
-             */
-            recalculation: number | string;
-            /** Total */
-            total?: number | string | null;
-            /**
-             * Method
-             * @default unknown
-             * @enum {string}
-             */
-            method: "meter" | "norm" | "norm_increased" | "unknown";
-        };
         /** PhotoRead */
         PhotoRead: {
             /**
@@ -2001,18 +2006,30 @@ export interface components {
              * @description Адрес, если дома нет в справочнике; вместо house_id
              */
             custom_address?: string | null;
-            /** Entrance */
+            /**
+             * Entrance
+             * @description Число от 1 до 99
+             */
             entrance?: string | null;
             /**
              * Full Name
-             * @description Подставляется в письма кодом
+             * @description 2-3 слова; регистр приводится к «Иванов Иван». Подставляется в письма
              */
             full_name?: string | null;
-            /** Phone */
+            /**
+             * Phone
+             * @description Российский номер; хранится как +7 900 123-45-67
+             */
             phone?: string | null;
-            /** Email */
+            /**
+             * Email
+             * @description Хранится в нижнем регистре
+             */
             email?: string | null;
-            /** Apartment */
+            /**
+             * Apartment
+             * @description До 6 символов: 12, 12а, 12/1
+             */
             apartment?: string | null;
             /**
              * Management Company Id

@@ -178,7 +178,7 @@ async def test_chat_prompt_has_no_personal_data(
     )
     await make_receipts(client, anna, llm)
     system = await ask(client, anna, llm)
-    for secret in ("Иванова", "79990001122", "кв. 77"):
+    for secret in ("Иванова", "79990001122", "999 000-11-22", "кв. 77"):
         assert secret not in system
 
 

@@ -3,6 +3,7 @@ import { Loader2, MapPin, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import type { AddressSuggestion } from '@/types/models'
 import { useAddressSearch } from '../hooks'
+import { checkAddress } from '@/lib/validation'
 import { ManualEntry, ManualEntryButton } from './manual-entry'
 
 interface Props {
@@ -24,6 +25,7 @@ export function AddressSearch({ onSelect, onCustom, autoFocus }: Props) {
         placeholder="Город, улица, номер дома"
         submitLabel="Использовать этот адрес"
         maxLength={500}
+        check={checkAddress}
         onSubmit={onCustom}
         onCancel={() => setManual(false)}
         autoFocus
@@ -41,6 +43,7 @@ export function AddressSearch({ onSelect, onCustom, autoFocus }: Props) {
           placeholder="Улица и номер дома, например: Кутузова 5а"
           aria-label="Адрес дома"
           autoComplete="off"
+          maxLength={200}
           autoFocus={autoFocus}
           className="pl-9"
         />

@@ -43,7 +43,7 @@ export type Check = S['Check']
 export type Finding = S['Finding']
 export type RecalculationLetter = S['RecalculationLetter']
 export type ManualReceipt = S['ManualReceipt']
-export type ManualLine = S['ParsedLine']
+export type ManualLine = S['ManualLine']
 export type ServiceOption = S['ServiceOption']
 
 export type Meta = S['Meta']

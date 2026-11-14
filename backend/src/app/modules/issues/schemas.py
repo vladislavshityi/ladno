@@ -4,6 +4,7 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.core import fields
 from app.core.schemas import ApiModel, Money, ORMModel
 from app.modules.issues.models import IssueStatus
 
@@ -30,14 +31,14 @@ class Question(ApiModel):
 
 
 class ClassifyRequest(BaseModel):
-    text: str = Field("", max_length=1000, description="Описание проблемы своими словами")
+    text: fields.Description = Field("", description="Описание проблемы своими словами")
     photo_ids: list[uuid.UUID] = Field(
         [], max_length=3, description="Загруженные фото проблемы (POST /photos)"
     )
 
     @model_validator(mode="after")
     def _needs_input(self) -> Self:
-        if len(self.text.strip()) < 3 and not self.photo_ids:
+        if not self.text and not self.photo_ids:
             raise ValueError("Нужно описание проблемы или фото")
         return self
 
@@ -109,8 +110,8 @@ class RouteRequest(BaseModel):
     answers: dict[str, str] = {}
     already_contacted_uk: bool = False
     house_id: int | None = Field(None, description="Дом; по умолчанию дом из профиля")
-    custom_address: str | None = Field(
-        None, max_length=500, description="Адрес, которого нет в справочнике; вместо house_id"
+    custom_address: fields.CustomAddress = Field(
+        None, description="Адрес, которого нет в справочнике; вместо house_id"
     )
 
     @model_validator(mode="after")
@@ -133,10 +134,10 @@ class RouteResult(ApiModel):
 
 
 class IssueCreate(RouteRequest):
-    description: str = Field(
-        "", max_length=1000, description="Описание проблемы словами жителя: основа текста обращения"
+    description: fields.Description = Field(
+        "", description="Описание проблемы словами жителя: основа текста обращения"
     )
-    location_details: str | None = Field(None, max_length=300, description="Подъезд, этаж, место")
+    location_details: fields.Place = Field(None, description="Подъезд, этаж, место")
     photo_ids: list[uuid.UUID] = Field([], max_length=10)
 
 
@@ -152,7 +153,7 @@ class DraftUpdate(BaseModel):
 
 class IssuePatch(BaseModel):
     status: IssueStatus | None = None
-    external_ref: str | None = Field(None, max_length=100)
+    external_ref: fields.Reference = None
     submitted_at: datetime | None = None
     draft: DraftUpdate | None = None
 

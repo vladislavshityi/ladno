@@ -1,3 +1,5 @@
+import { DESCRIPTION_MAX, checkDescription } from '@/lib/validation'
+import { useState } from 'react'
 import { Textarea } from '@/components/ui/textarea'
 import { FormField } from '@/components/form-field'
 import { useClassify, useUploadPhoto } from '../../hooks'
@@ -11,7 +13,11 @@ export function DescribeStep({ data, setData, onNext }: StepProps) {
   const upload = useUploadPhoto()
   const classify = useClassify()
   const uploading = data.photos.some((p) => !p.id)
-  const canContinue = (data.text.trim().length >= 3 || data.photos.length > 0) && !uploading
+  const description = checkDescription(data.text)
+  const [touched, setTouched] = useState(false)
+  // A short text is an error; no text at all is fine when there is a photo.
+  const canContinue = description.ok && (description.value !== null || data.photos.length > 0) && !uploading
+  const error = touched && !description.ok ? description.error : undefined
 
   const addPhotos = (files: File[]) => {
     for (const file of files) {
@@ -27,7 +33,7 @@ export function DescribeStep({ data, setData, onNext }: StepProps) {
 
   const submit = () =>
     classify.mutate(
-      { text: data.text.trim(), photo_ids: data.photos.flatMap((p) => (p.id ? [p.id] : [])) },
+      { text: description.ok ? (description.value ?? '') : '', photo_ids: data.photos.flatMap((p) => (p.id ? [p.id] : [])) },
       {
         onSuccess: (result) => {
           setData((d) => ({
@@ -50,11 +56,13 @@ export function DescribeStep({ data, setData, onNext }: StepProps) {
       pending={classify.isPending}
       nextLabel={classify.isPending ? 'Определяем…' : 'Определить категорию'}
     >
-      <FormField label="Описание" htmlFor="issue-text" hint="Например: в подъезде не горит свет на 3 этаже">
+      <FormField label="Описание" htmlFor="issue-text" hint="Например: в подъезде не горит свет на 3 этаже" error={error}>
         <Textarea
           id="issue-text"
           value={data.text}
-          maxLength={1000}
+          maxLength={DESCRIPTION_MAX}
+          aria-invalid={Boolean(error)}
+          onBlur={() => setTouched(true)}
           rows={4}
           autoFocus
           onChange={(e) => setData((d) => ({ ...d, text: e.target.value }))}

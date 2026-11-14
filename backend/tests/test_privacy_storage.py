@@ -15,7 +15,7 @@ async def test_personal_data_is_encrypted_in_db(
     raw = (await session.execute(text("SELECT full_name, phone, apartment FROM users"))).one()
     assert all(value and value not in profile.values() for value in raw)
     me = (await client.get("/users/me", headers=anna.headers)).json()
-    assert me["full_name"] == "Иванов Иван" and me["phone"] == "+79140000000"
+    assert me["full_name"] == "Иванов Иван" and me["phone"] == "+7 914 000-00-00"
 
 
 async def test_uploaded_photo_loses_exif(client: httpx.AsyncClient, anna: Account, tmp_path):

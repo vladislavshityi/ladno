@@ -115,7 +115,7 @@ async def test_profile_personal_data_goes_into_letters_by_code(
         await client.post("/issues", json={"category": "graffiti"}, headers=anna.headers)
     ).json()
     full = issue["draft"]["full"]
-    assert "От: Иванов И. И., кв. 12, тел. +79990001122, e-mail i@example.ru" in full
+    assert "От: Иванов И. И., кв. 12, тел. +7 999 000-11-22, e-mail i@example.ru" in full
     assert "[укажите" not in full and "Иванов" not in issue["draft"]["pos_short"]
     receipt = (await client.post("/receipts/samples/2026-11", headers=anna.headers)).json()
     url = f"/receipts/{receipt['id']}/recalculation-letter"
@@ -153,14 +153,14 @@ async def test_personal_data_never_goes_to_llm(client: httpx.AsyncClient, anna: 
 async def test_export_contains_all_own_data(
     client: httpx.AsyncClient, anna: Account, boris: Account
 ):
-    await client.put("/users/me/profile", json={"full_name": "Иванов"}, headers=anna.headers)
+    await client.put("/users/me/profile", json={"full_name": "Иванов Иван"}, headers=anna.headers)
     await client.post("/issues", json={"category": "graffiti"}, headers=anna.headers)
     await client.post("/receipts/samples/2026-10", headers=anna.headers)
     png = PNG
     await client.post("/photos", files={"file": ("a.png", png, "image/png")}, headers=anna.headers)
     await client.post("/issues", json={"category": "pothole"}, headers=boris.headers)
     data = (await client.get("/users/me/export", headers=anna.headers)).json()
-    assert data["profile"]["full_name"] == "Иванов"
+    assert data["profile"]["full_name"] == "Иванов Иван"
     assert [i["category"] for i in data["issues"]] == ["graffiti"]
     assert data["issues"][0]["draft"]["full"]
     assert [r["period"] for r in data["receipts"]] == ["2026-10"]
