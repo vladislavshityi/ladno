@@ -6,10 +6,25 @@ import { openExternal } from '@/lib/telegram'
 import { cn } from '@/lib/utils'
 import { useWidgetLogin } from '../hooks'
 
-declare global {
-  interface Window {
-    onTelegramAuth?: (user: Record<string, unknown>) => void
+const WIDGET_FIELDS = ['id', 'first_name', 'last_name', 'username', 'photo_url', 'auth_date', 'hash']
+const NUMERIC_FIELDS = new Set(['id', 'auth_date'])
+
+/**
+ * After login the widget redirects back with the signed fields in the query string.
+ * A redirect is used instead of data-onauth, which the widget runs through eval and our CSP forbids.
+ */
+function takeWidgetResult(): Record<string, unknown> | null {
+  const params = new URLSearchParams(window.location.search)
+  if (!params.has('hash') || !params.has('id')) return null
+  const user: Record<string, unknown> = {}
+  for (const key of WIDGET_FIELDS) {
+    const value = params.get(key)
+    if (value !== null) user[key] = NUMERIC_FIELDS.has(key) ? Number(value) : value
+    params.delete(key)
   }
+  const rest = params.toString()
+  window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash)
+  return user
 }
 
 const WIDGET_TIMEOUT_MS = 4000
@@ -24,16 +39,20 @@ export function TelegramLoginButton({ botName }: { botName: string }) {
   const { mutate } = useWidgetLogin()
 
   useEffect(() => {
+    const user = takeWidgetResult()
+    if (user) mutate(user)
+  }, [mutate])
+
+  useEffect(() => {
     const el = host.current
     if (!el) return
-    window.onTelegramAuth = (user) => mutate(user)
     const script = document.createElement('script')
     script.src = 'https://telegram.org/js/telegram-widget.js?22'
     script.async = true
     script.dataset.telegramLogin = botName
     script.dataset.size = 'large'
     script.dataset.radius = '12'
-    script.dataset.onauth = 'onTelegramAuth(user)'
+    script.dataset.authUrl = window.location.origin + window.location.pathname
     el.replaceChildren(script)
 
     const observer = new MutationObserver(() => {
@@ -45,7 +64,6 @@ export function TelegramLoginButton({ botName }: { botName: string }) {
     return () => {
       observer.disconnect()
       window.clearTimeout(timer)
-      delete window.onTelegramAuth
       el.replaceChildren()
     }
   }, [botName, mutate])
