@@ -60,7 +60,7 @@ export function CollectiveCard({ collectiveId }: { collectiveId: string }) {
               className="mt-0.5"
             />
             <Label htmlFor="collective-consent" className="text-sm leading-snug font-normal">
-              Указать мои ФИО, квартиру и мои фото в коллективном письме
+              Указать в коллективном письме мои ФИО и квартиру и приложить мои фото
             </Label>
           </div>
           {canBuild ? (

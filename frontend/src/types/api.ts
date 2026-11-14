@@ -295,7 +295,7 @@ export interface paths {
         head?: never;
         /**
          * Update Membership
-         * @description Согласие или отказ указывать свои ФИО, квартиру и мои фото в коллективном письме.
+         * @description Согласие или отказ указывать свои ФИО и квартиру в коллективном письме.
          */
         patch: operations["update_membership"];
         trace?: never;
@@ -1803,7 +1803,7 @@ export interface components {
             consent: boolean;
             /**
              * Consent Letter
-             * @description Согласие указать ФИО, квартиру и мои фото в коллективном письме
+             * @description Согласие указать ФИО и квартиру в коллективном письме
              * @default false
              */
             consent_letter: boolean;
@@ -1966,16 +1966,6 @@ export interface components {
             llm_fallbacks: {
                 [key: string]: number;
             };
-            /**
-             * Llm Budget Exhausted
-             * @description Суточный бюджет запросов к модели исчерпан: до 00:00 UTC работают шаблоны
-             */
-            llm_budget_exhausted: boolean;
-            /**
-             * Llm Tokens Today
-             * @description Токенов израсходовано за сутки с запуска сервиса; только статистика
-             */
-            llm_tokens_today: number;
         };
         /** Notification */
         Notification: {
