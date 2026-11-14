@@ -74,4 +74,16 @@ async def list_points(
         point.categories[issue_category] = total
     # Дом с одним-двумя обращениями выдал бы автора (дом, категория, срок), поэтому такие скрыты.
     threshold = get_settings().map_min_issues
-    return [p for p in points.values() if p.total >= threshold]
+    visible = [p for p in points.values() if p.total >= threshold]
+    for point in visible:
+        point.categories = _merge_rare(point.categories, threshold)
+    return visible
+
+
+def _merge_rare(categories: dict[str, int], threshold: int) -> dict[str, int]:
+    """Редкая категория в доме тоже выдаёт автора — такие обращения показываются как «Другое»."""
+    merged: dict[str, int] = {}
+    for category, count in categories.items():
+        key = category if count >= threshold else "other"
+        merged[key] = merged.get(key, 0) + count
+    return merged

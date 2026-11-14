@@ -50,3 +50,10 @@ async def test_points_filters(
     assert elevators[0]["categories"] == {"elevator": 1}
     assert week == []  # обращения поданы 40 дней назад
     assert (await client.get("/map/points", params={"days": 0})).status_code == 422
+
+
+def test_rare_categories_are_shown_as_other():
+    from app.modules.map.service import _merge_rare
+
+    merged = _merge_rare({"elevator": 4, "graffiti": 1, "pothole": 2, "other": 1}, 3)
+    assert merged == {"elevator": 4, "other": 4}
